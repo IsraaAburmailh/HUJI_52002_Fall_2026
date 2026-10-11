@@ -11,6 +11,174 @@ format:
 ---
 
 
+## Finding and stopping a process
+
+`tail -f` keeps showing new lines as they are added to a file, which is how you watch a log of a long-running job. To try it, open a second terminal and run the first line, which adds the date to `logfile.txt` every second. Then, in the first terminal, run the second line. Press Ctrl+C in both when done.
+
+```bash
+cd ~/workspace/HUJI_52002_Fall_2026/scratch/lec01    # terminal 2
+while true; do date >> logfile.txt; sleep 1; done    # terminal 2
+tail -f logfile.txt                                  # terminal 1 .... then CTRL+C...
+```
+
+
+What if we forget to close terminal 2?
+
+Every running program is a **process** with an ID number (its **PID**). Let's open a third terminal. The command `ps` lists processes:
+
+```bash
+ps                    # your processes in this terminal (not super interesting)
+                      # note "bash" is running - it's the program actually receiving your prompt commands
+ps -u $USER           # just your processes, from every terminal
+ps aux                # every process on the machine
+```
+
+In `ps aux`, `a` means processes of all users, `u` means a user-oriented format (with the owner, PID, `%CPU`, `%MEM` and command) and `x` includes programs that have no terminal. To find one process by name, filter the list with a pipe + `grep`:
+
+```bash
+ps aux | grep sleep   # find a process by name (grep filters the list)
+```
+
+I'll see something like this:
+
+```
+USER      PID     %CPU %MEM  VSZ   RSS   TTY    STAT START TIME COMMAND
+kapelner  2200782  0.0  0.0  17644 7936  pts/0  S+   23:45 0:00 sleep 300
+```
+
+For the columns not self explanatory:
+- `PID` indicates the linux process id number
+- `VSZ` is the memory reserved
+- `RSS` is memory occupied
+- `TTY` is the terminal ID the process is connected to
+- `STAT` is status (where S+ means sleeping)
+
+**Why did we search for `sleep` and not for `while`?** There is no program called `while`. The loop is part of the bash language, so it is run by the shell itself, the `bash` in terminal 2. What you can see is the command in the loop's children: every second it executes `sleep 1`.
+
+To watch processes live instead, use `htop`, and press `q` to quit:
+
+```bash
+htop
+```
+
+F4 filters the list (type `sleep`), F9 sends a signal to the selected process, and `q` quits.
+
+**Stopping a process.** The command `kill` takes a PID. Despite its name, it sends the process a **signal**, and the default signal is a polite request to stop, which lets the program clean up (close files, remove temporary data):
+
+```bash
+kill 4702             # ask process 4702 to stop (signal SIGTERM)
+kill -9 4702          # force it to stop at once (SIGKILL): last resort
+```
+
+`kill -9` cannot be refused, but the program gets no chance to clean up and may leave half-written files behind, so try plain `kill` first. You can only stop your own processes. Someone else's, or root's, needs `sudo`. Let's try it:
+
+```bash
+ps aux | grep sleep   # find a process by name (grep filters the list)
+kill <num> 
+```
+
+That didn't work because the PID changes every second! We need to find the PID of the parent of this process
+(i.e., the bash program running it)
+
+```bash
+ps -axo pid,ppid,command | grep "sleep"   # PID, parent PID, command
+ps 418990
+```
+
+Now let's stop it gracefully
+
+```bash
+kill 418990
+ps aux | grep sleep
+```
+
+Didn't work. Let's force it to stop:
+
+```bash
+kill -9 418990
+ps aux | grep sleep
+```
+
+Our loop teaches two lessons about this:
+
+- Stop the parent, not the child.
+- Interactive shells ignore the polite request. `kill 4702` on the shell in terminal 2 appears to do nothing, because an interactive shell ignores SIGTERM. `kill -9 4702` works, but it ends the shell itself, and terminal 2 usually closes. The normal way to stop a loop is **Ctrl+C in its own terminal**, which sends the process a different signal, SIGINT (number 2).
+
+## Columns, sorting and counting
+
+`cut` picks columns, `sort` orders lines, and `uniq` collapses repeated lines. They are the backbone of command-line data analysis:
+
+```bash
+#date,county,state,fips,cases,deaths
+cut -d, -f1,3 covid.csv | head -n 10     # columns 1 and 3
+cut -d, -f1,3  covid.csv | head -n 10 | sort -r     # columns 1 and 3 most recent first
+cut -d, -f1,3  covid.csv | sort -r | head -n 10     # why is this slower?
+cut -d, -f1,3 covid.csv | head -n 10     # columns 1 and 3 most recent first
+cut -d, -f2-4 covid.csv | head -n 4     # columns 2 through 4
+cut -d, -f2-4 covid.csv | head -n 4 | uniq    #same output just pruned to unique rows
+cut -d, -f2-4 covid.csv | head -n 4 | uniq -c #counts the unique rows
+cut -d, -f4- covid.csv | head -n 4      # column 4 to the end
+cut -c1-7 covid.csv | head -n 4         # characters 1-7: not columns at all (the seven charas YYYY-MM in this case)
+cut -c1-7 covid.csv | uniq -c   # number of cases per month, most recent first
+cut -c1-7 covid.csv | uniq -c | sort -nr   # sorted as a number (not text), largest first
+```
+
+::: {.callout-warning}
+## `cut` doesn't understand quoted fields
+`cut -d, -f2` splits at *every* comma, even one inside quotes. For a file with a line `"Smith, John",Boston`, column 2 comes out as ` John"` instead of `Boston`. `covid.csv` has no quoted fields, so we are safe here, but real CSV files often do. Check with `grep -c '"'` first, and use a tool that understands CSV (R, Python, DuckDB) when it matters:
+
+```bash
+printf 'name,city\n"Smith, John",Boston\n' > quoted.csv
+cut -d, -f2 quoted.csv
+```
+:::
+
+
+To sort a CSV by a column, tell `sort` the separator with `-t` and the column with `-k`. Write the column twice, `-k5,5`, so it sorts on that column alone and not everything after it:
+
+```bash
+#date,county,state,fips,cases,deaths
+sort -t, -k5,5 -n -r covid.csv | head -n 30   # largest case counts, any county
+sort -t, -k3,3 -k5,5nr covid.csv | head -n 30 # state, then cases (high to low)
+sort -t, -k4,4 -u covid.csv | wc -l          # one row per distinct fips code
+```
+
+`uniq` removes repeated lines, but only repeated *neighbors*, which is why it almost always follows a `sort`:
+
+```bash
+printf 'a\nb\na\na\nc\n' | uniq               # a b a c: neighbors only
+printf 'a\nb\na\na\nc\n' | sort | uniq        # a b c
+printf 'a\nb\na\na\nc\n' | sort | uniq -c     # with counts: 3 a, 1 b, 1 c
+```
+
+Put them together and you can answer real questions about a file with 885,000 rows in a few seconds:
+
+```bash
+#date,county,state,fips,cases,deaths
+cut -d, -f3 covid.csv | sort | uniq -c | sort -rn | head -n 5   # top 5 states
+cut -d, -f3 covid.csv | sort -u | wc -l           # how many distinct "states"?
+cut -d, -f2,3 covid.csv | sort -u | wc -l         # distinct county-state pairs
+grep -E ',(Texas|Ohio),' covid.csv | cut -d, -f1,2,5 | head -n 2
+```
+
+The pattern `sort | uniq -c | sort -rn | head` is a useful idiom: *count how often each value occurs, and show the most common first*.
+
+
+## Chaining commands and exit status
+
+Recall that every command ends with an exit status: 0 for success, anything else for failure. The shell can chain commands based on it:
+
+```bash
+echo a; echo b                    # ; runs both, whatever happens
+mkdir results && cd results       # && : second only if the first worked
+pwd
+cd ..
+cd /nonexistent && echo "arrived in /nonexistent" # the echo never runs
+cd /nonexistent || echo "never arrived in /nonexistent"  # || : second only if first failed
+grep -q "Alaska" covid.csv && echo "found it"
+grep -q "Atlantis" covid.csv || echo "not there"
+```
+
 
 # Processes
 
@@ -61,3 +229,256 @@ python3 -c "x = 'a' * 10**9; input('Press Enter to quit')"
 ```
 
 Watch the memory bar jump by about 1 GB (the `used` column of `free -h` does too). Press Enter and watch it drop. This is what "fits in RAM" means in practice.
+
+
+# Reshaping text: `awk`, `sed`, `tr` and `jq`
+
+`cut` and `grep` take you a long way, but they cannot reorder columns, compute anything or change the text they print. Four more tools fill the gaps. All of them read a stream, so they work in pipes and on files that don't fit in memory.
+
+## `awk`: column-aware processing
+
+`awk` reads its input one line at a time and splits every line into fields. `$1` is the first field, `$3` the third, `$0` the whole line, `NF` the number of fields and `NR` the line number. A program has the form `condition {action}`: for every line that meets the condition, do the action. With no condition the action runs on every line, and with no action matching lines are printed.
+
+```bash
+awk -F, '{print $3, $1}' covid.csv | head -n 3   # -F, : split at commas
+awk -F, -v OFS=, '{print $3, $1}' covid.csv | head -n 3 # OFS=, : use commas
+awk -F, '$3=="Texas"' covid.csv | head -n 2    # a condition picks rows
+awk -F, '$3=="Texas" && $5>100000' covid.csv | wc -l    # and/or work: && ||
+```
+
+The first two lines do what `cut` could not: put the state before the date. Without `-v OFS=,`, `awk` joins the printed fields with spaces.
+
+`awk` also remembers things between lines. A variable you never declared starts at 0, and `END {...}` runs once after the last line. That is enough to total and count:
+
+```bash
+awk -F, '$1=="2020-12-31" {d+=$6} END {print d}' covid.csv  # sum on one date
+awk -F, 'NR>1 && $3=="Texas" {s+=$5; n++} END {print s/n}' covid.csv  # mean
+awk -F, 'NR>1 {n[$3]++} END {for (s in n) print s "," n[s]}' covid.csv \
+  | sort -t, -k2,2nr | head -n 3                             # rows per state
+```
+
+The last one uses an **array** `n`, indexed by the state name: `n[$3]++` adds 1 to the counter for the state on each line. This is the same count as `cut | sort | uniq -c`, in one pass and without sorting the whole file.
+
+::: {.callout-warning}
+## The cases column is cumulative
+In `covid.csv`, `cases` and `deaths` are running totals, so adding up a column over *all* rows counts the same people over and over. That is why the first total above is restricted to one date (`$1=="2020-12-31"`). Before you sum a column, check what a row means.
+:::
+
+## `sed`: find and replace in a stream
+
+`sed` ("stream editor") applies an edit to every line as it passes through. The edit you will use most is substitute, `s/old/new/`:
+
+```bash
+sed 's/Texas/TX/' covid.csv | grep -m 2 TX   # replace first match per line
+sed 's/,/;/g' covid.csv | head -n 2          # g : replace every match
+sed '1d' covid.csv | head -n 1               # delete line 1 (the header)
+sed -n '100,102p' covid.csv                  # -n and p : print lines 100-102
+sed -n '/Alaska/p' covid.csv | head -n 1     # print only matching lines
+sed -E 's/^([0-9]{4})-([0-9]{2})-([0-9]{2})/\3.\2.\1/' covid.csv | head -n 3
+```
+
+The last line uses `-E` (the extended regular expressions from the grep section) and **groups**: each `( )` remembers what it matched, and `\1`, `\2`, `\3` paste the pieces back in any order. Here it turns `2020-01-21` into `21.01.2020`.
+
+By default `sed` prints the edited text and leaves the file alone. To change the file itself, use `-i`, and keep a backup while you are learning:
+
+```bash
+sed -i.bak 's/Texas/TX/g' states.txt    # edit in place, keep states.txt.bak
+```
+
+(Write it as `-i.bak`, with no space. It works the same on Ubuntu and on a Mac; a bare `-i` does not.)
+
+## `tr`: swap or delete single characters
+
+`tr` ("translate") works on characters, not lines or fields, and it only reads its input from a pipe or a `<` redirect. It cannot take a file name:
+
+```bash
+echo "Hello" | tr 'a-z' 'A-Z'          # HELLO: a becomes A, b becomes B...
+head -n 2 covid.csv | tr ',' '\t'      # commas to tabs: a TSV file
+echo "a   b    c" | tr -s ' '          # -s : squeeze repeated spaces into one
+tr -d '\r' < win.csv > unix.csv        # -d : delete characters
+```
+
+The last line fixes the most common reason a CSV "looks fine but breaks". Files made on Windows end every line with two characters (`\r\n`), while Linux expects one (`\n`), so the extra `\r` ends up glued to the last column. `file` shows the problem, and `tr -d '\r'` removes it:
+
+```bash
+printf 'a,b\r\nc,d\r\n' > win.csv
+file win.csv                           # ...with CRLF line terminators
+tr -d '\r' < win.csv > unix.csv
+file unix.csv                          # unix.csv: ASCII text
+```
+
+## `jq`: `grep` and `cut` for JSON
+
+Much data from the web (APIs, logs, configuration) is **JSON**: nested `{"key": value}` objects and `[lists]`. Line-oriented tools like `cut` don't see its structure, but `jq` does. It is not installed by default: `sudo apt install jq` on Ubuntu, `brew install jq` on a Mac.
+
+```bash
+echo '{"name":"Ada","langs":["R","Python"]}' > p.json
+jq . p.json                     # pretty-print the whole thing
+jq '.name' p.json               # one key:  "Ada"
+jq -r '.name' p.json            # -r : raw text, without the quotes:  Ada
+jq '.langs[0]' p.json           # the first item of a list:  "R"
+jq -r '.langs[]' p.json         # every item, one per line:  R and Python
+```
+
+Big JSON data usually comes as **JSON Lines**: one object per line, which streams through pipes like a CSV. `jq` handles it one object at a time:
+
+```bash
+printf '{"state":"Texas","cases":5}\n{"state":"Ohio","cases":3}\n' \
+  > states.jsonl
+jq -r '.state' states.jsonl                  # one field from every line
+jq 'select(.cases > 4)' states.jsonl         # keep matching objects only
+jq -r '[.state, .cases] | @csv' states.jsonl # turn each object into a CSV row
+jq -s 'map(.cases) | add' states.jsonl       # -s : all lines as one list; sum
+```
+
+::: {.callout-tip}
+## Try it
+Starting from `covid.csv`, use `awk` to write a file `texas.csv` with only the date and the cases of the Texas rows (comma-separated), and then use `sed` to change the dates from `2020-03-15` to `15/03/2020`. Hint: the slash in the replacement text clashes with the `/` of `s///`. You can use another character, such as `s#old#new#`.
+:::
+
+# Compressed files and archives
+
+Big data almost always arrives compressed, because text compresses very well. Our 35 MB `covid.csv` becomes about 9 MB with `gzip`, and about 4.5 MB with `zstd`.
+
+## `gzip`: one file at a time
+
+```bash
+gzip -k covid.csv              # make covid.csv.gz; -k : keep the original
+ls -lh covid.csv covid.csv.gz  # 35M versus 8.9M
+gzip -c covid.csv > copy.gz    # -c : write to stdout, leave the file alone
+gunzip covid.csv.gz            # unpack (removes the .gz; add -k to keep it)
+```
+
+Without `-k`, `gzip` replaces the file by its compressed version, so the original is gone. You rarely need to unpack, because there is a family of tools that read compressed files directly:
+
+```bash
+zcat covid.csv.gz | head -n 3      # like cat, but decompresses on the fly
+zgrep -c Texas covid.csv.gz        # like grep: the number of lines with Texas
+zless covid.csv.gz                 # like less
+zcat covid.csv.gz | wc -l          # a pass over the data, never unpacked
+```
+
+The tools decompress as a stream, so these commands behave like any other pipe: constant memory, and `head` returns immediately. Decompressing costs some CPU time, so on a file that is already in memory the plain version is faster. But when the disk or the network is the bottleneck, which is common with big data, reading less data wins. When you can, keep big files compressed and stream them.
+
+## `tar` and `zip`: whole folders
+
+`gzip` compresses one file. To pack a folder into a single file, use `tar`, which bundles files into an **archive**, usually compressed at the same time. The name `.tar.gz` (or `.tgz`) means "tar archive, gzip-compressed". The letters in the options are easy to remember:
+
+| Letter | Meaning |
+|--------|---------|
+| `c` | **c**reate an archive |
+| `x` | e**x**tract an archive |
+| `t` | **t**able of contents: list what is inside |
+| `z` | use g**z**ip |
+| `f` | the next word is the archive's **f**ile name |
+
+```bash
+tar -czf proj.tar.gz proj/          # pack the folder proj/ into proj.tar.gz
+tar -tzf proj.tar.gz                # look inside without unpacking
+tar -xzf proj.tar.gz                # unpack here (recreates proj/)
+tar -xzf proj.tar.gz -C /tmp        # unpack into another folder instead
+```
+
+The `.zip` format does the same job, and is what Windows and Mac users often send you:
+
+```bash
+zip -r proj.zip proj/               # -r : include the folder's contents
+unzip -l proj.zip                   # list what is inside
+unzip proj.zip -d where/            # unpack into the folder where/
+```
+
+## `zstd`: faster and smaller
+
+`zstd` ("Zstandard") compresses better than `gzip` and is much faster at both compressing and decompressing, which is why it is becoming the default for large data (Parquet files can use it too). It is not installed by default (`sudo apt install zstd`, or `brew install zstd`). It has the same options and companion tools as `gzip`:
+
+```bash
+zstd -k covid.csv                   # make covid.csv.zst, keep the original
+ls -lh covid.csv covid.csv.zst      # 35M versus 4.5M
+zstdcat covid.csv.zst | head -n 3   # read it like cat
+zstd -d covid.csv.zst               # unpack
+tar --zstd -cf proj.tar.zst proj/   # a tar archive compressed with zstd
+```
+
+::: {.callout-tip}
+## Try it
+Compress `covid.csv` with `gzip -k` and with `zstd -k`, and compare the sizes with `ls -lh`. Then compare `time wc -l covid.csv` with `time zcat covid.csv.gz | wc -l`. Which is faster, and why? (The file is probably already cached in memory. Would the answer change if it were on a slow disk or a network drive?)
+:::
+
+# Working on remote machines: `ssh`, `scp`, `rsync` and `tmux`
+
+Big data rarely lives on your laptop. You work on a server or a cluster: a computer in a machine room that you reach over the network, with far more cores, memory and disk than yours. Everything you have learned so far works there too, because you give it commands through a shell. The tools below get you there, move the files, and keep your jobs alive.
+
+(These examples need an account on a remote machine. Replace `user@server` with your own login.)
+
+## `ssh`: log in to another machine
+
+```bash
+ssh user@server          # log in; the prompt is now on the server
+ssh user@server "df -h"  # run one command there and come back
+exit                                 # leave the server (or Ctrl+D)
+```
+
+After `ssh` connects, you are typing into a shell on the server, and `pwd`, `ls`, `htop` and the rest refer to *that* machine. Check which one you are on by the prompt or with `hostname`.
+
+Typing a password each time gets tedious. A **key pair** replaces it: you create a private key that stays on your computer and a public key that you give to the server:
+
+```bash
+ssh-keygen -t ed25519                # make the key pair, once
+ssh-copy-id user@server  # install your public key on the server
+ssh user@server          # now logs in without a password
+```
+
+Never share the private key (`~/.ssh/id_ed25519`). The public one, `id_ed25519.pub`, is meant to be shared.
+
+## `scp` and `rsync`: copy files between machines
+
+`scp` ("secure copy") is `cp` across the network. The remote side is written `user@server:path`, and the colon is what says "this is on the server":
+
+```bash
+scp results.csv user@server:~/data/     # your computer to the server
+scp user@server:~/out/model.pkl .       # server to here (. : this folder)
+scp -r results/ user@server:~/          # -r : a whole folder
+```
+
+`rsync` does the same job better for anything big or repeated. It compares both sides and sends only what is missing or changed, so a second run of a large copy takes seconds, and an interrupted one can be resumed:
+
+```bash
+rsync -av data/ user@server:~/data/     # -a : keep folders, dates; -v : talk
+rsync -avz data/ user@server:~/data/    # -z : compress while sending
+rsync -avP data/ user@server:~/data/    # -P : progress, keep partial files
+rsync -avn data/ user@server:~/data/    # -n : dry run, only show the plan
+```
+
+::: {.callout-warning}
+## The trailing slash matters
+`rsync -av data/ dest/` copies the *contents* of `data` into `dest`. Without the slash, `rsync -av data dest/` creates `dest/data`. The same is true on the destination side. When in doubt, add `-n` first.
+:::
+
+## `tmux`: a terminal that survives disconnects
+
+`nohup` keeps one command alive after you log out. `tmux` ("terminal multiplexer") keeps a whole *terminal* alive: you start a session on the server, begin your work, **detach**, and log out. The session keeps running, and when you log in again later you **attach** and find everything as you left it, including a long job's live output.
+
+```bash
+tmux new -s job            # start a session named job
+python3 long_job.py        # start the long job
+                           # now press Ctrl+B, release, then D: detach
+tmux ls                    # (later) list your sessions
+tmux attach -t job         # come back: the job is still running
+tmux kill-session -t job   # delete the session when you are done
+```
+
+Every `tmux` key combination starts with the **prefix**, Ctrl+B, followed by one more key:
+
+| Keys | What it does |
+|------|--------------|
+| Ctrl+B, then D | detach (leave the session running) |
+| Ctrl+B, then C | create a new window inside the session |
+| Ctrl+B, then N / P | go to the next / previous window |
+| Ctrl+B, then [ | scroll back through the output (`q` to leave) |
+
+`screen` is an older program that does the same thing, and you will still meet it on old servers. A good rule of thumb: use `nohup ... &` for one fire-and-forget command, and `tmux` when you want to come back to a terminal and look at it or work in it.
+
+::: {.callout-tip}
+## Try it
+No server needed for the `tmux` part: run `tmux new -s demo`, start `yes > /dev/null` (it uses a CPU core), detach with Ctrl+B then D, and check that `tmux ls` still shows the session and `htop` still shows `yes` running. Re-attach with `tmux attach -t demo`, press Ctrl+C to stop the `yes`, and type `exit` to end the session.
+:::

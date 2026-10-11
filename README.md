@@ -41,7 +41,7 @@ None released yet
 
 ## Office Hours
 
-Time / Location: Sunday 15:30-16:30 in room 24-417
+Time / Location: Sunday 16-17:00 in room 24-417
 
 ## The Teaching Assistant
 

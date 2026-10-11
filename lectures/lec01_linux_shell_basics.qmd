@@ -95,7 +95,7 @@ ls -lhtr        # oldest first (r reverses any of these)
 And type of file is it (the filename can lie)?
 
 ```bash
-file covid.csv            
+file covid.csv         
 ```
 
 The . and .. are "hidden" and signify special directory entries known as "hard links" that act as shortcuts for file system navigation. The `.` is the current directory. We will use it soon. The `..` is the parent directory e.g.
@@ -261,7 +261,10 @@ Once `find` has the files, it can do something with them. `-exec` runs a command
 ```bash
 find . -name "*.txt" -delete              # delete every match (no confirmation given)
 ls -alhS
-rm -i *.tex                               # ask before each deletion
+
+touch a.tex b.tex c.tex
+
+rm -i *.tex                              # ask before each deletion
 ```
 
 Searching from `/` reaches directories you are not allowed to read, which produces error messages.
@@ -345,11 +348,11 @@ First we will introduce multiline strings. They begin with an arbitrary string w
 It tells cat to take string input and not from the keyboard.
 
 ```bash
-cat << 'EOF'
+cat << 'ASDFGG'
 line 1
 line 2
 line 3
-EOF
+ASDFGG
 ```
 
 Now the following would make sense, but it ruins the "EOF" delimiter 
@@ -570,7 +573,7 @@ Fail. I'm not the owner. We will return to this later.
 
 ###move this up to script
 
-## Your own commands: `PATH`, `export` and `alias`
+## Your own commands: `PATH`, `export`
 
 The `PATH` is a list of directories. When you type a command name, the shell looks for it in each of them 
 
@@ -796,7 +799,7 @@ The exit status is what scripts use to make decisions.
 
 ```bash
 ls | grep csv                       # only the names containing csv
-ls -l | grep "^d"                   # only directories: their line starts with d
+ls -la | grep "^d"                   # only directories: their line starts with d
 ls -l | grep -v "^d"                # -v: everything except directories
 find . -name "*.csv" | grep covid   # csv files whose path also contains covid
 find . -type f | grep -v "\.git/"   # all files, but skip anything inside .git
@@ -883,169 +886,4 @@ Both are patterns, and the characters look alike, but they are different languag
 :::
 
 
-## Finding and stopping a process
 
-`tail -f` keeps showing new lines as they are added to a file, which is how you watch a log of a long-running job. To try it, open a second terminal and run the first line, which adds the date to `logfile.txt` every second. Then, in the first terminal, run the second line. Press Ctrl+C in both when done.
-
-```bash
-cd ~/workspace/HUJI_52002_Fall_2026/scratch/lec01    # terminal 2
-while true; do date >> logfile.txt; sleep 1; done    # terminal 2
-tail -f logfile.txt                                  # terminal 1 .... then CTRL+C...
-```
-
-What if we forget to close terminal 2?
-
-Every running program is a **process** with an ID number (its **PID**). Let's open a third terminal. The command `ps` lists processes:
-
-```bash
-ps                    # your processes in this terminal (not super interesting)
-                      # note "bash" is running - it's the program actually receiving your prompt commands
-ps -u $USER           # just your processes, from every terminal
-ps aux                # every process on the machine
-```
-
-In `ps aux`, `a` means processes of all users, `u` means a user-oriented format (with the owner, PID, `%CPU`, `%MEM` and command) and `x` includes programs that have no terminal. To find one process by name, filter the list with a pipe + `grep`:
-
-```bash
-ps aux | grep sleep   # find a process by name (grep filters the list)
-```
-
-I'll see something like this:
-
-```
-USER      PID     %CPU %MEM  VSZ   RSS   TTY    STAT START TIME COMMAND
-kapelner  2200782  0.0  0.0  17644 7936  pts/0  S+   23:45 0:00 sleep 300
-```
-
-For the columns not self explanatory:
-- `PID` indicates the linux process id number
-- `VSZ` is the memory reserved
-- `RSS` is memory occupied
-- `TTY` is the terminal ID the process is connected to
-- `STAT` is status (where S+ means sleeping)
-
-**Why did we search for `sleep` and not for `while`?** There is no program called `while`. The loop is part of the bash language, so it is run by the shell itself, the `bash` in terminal 2. What you can see is the command in the loop's children: every second it executes `sleep 1`.
-
-To watch processes live instead, use `htop`, and press `q` to quit:
-
-```bash
-htop
-```
-
-F4 filters the list (type `sleep`), F9 sends a signal to the selected process, and `q` quits.
-
-**Stopping a process.** The command `kill` takes a PID. Despite its name, it sends the process a **signal**, and the default signal is a polite request to stop, which lets the program clean up (close files, remove temporary data):
-
-```bash
-kill 4702             # ask process 4702 to stop (signal SIGTERM)
-kill -9 4702          # force it to stop at once (SIGKILL): last resort
-```
-
-`kill -9` cannot be refused, but the program gets no chance to clean up and may leave half-written files behind, so try plain `kill` first. You can only stop your own processes. Someone else's, or root's, needs `sudo`. Let's try it:
-
-```bash
-ps aux | grep sleep   # find a process by name (grep filters the list)
-kill <num> 
-```
-
-That didn't work because the PID changes every second! We need to find the PID of the parent of this process
-(i.e., the bash program running it)
-
-```bash
-ps -axo pid,ppid,command | grep "sleep"   # PID, parent PID, command
-ps 418990
-```
-
-Now let's stop it gracefully
-
-```bash
-kill 418990
-ps aux | grep sleep
-```
-
-Didn't work. Let's force it to stop:
-
-```bash
-kill -9 418990
-ps aux | grep sleep
-```
-
-Our loop teaches two lessons about this:
-
-- Stop the parent, not the child.
-- Interactive shells ignore the polite request. `kill 4702` on the shell in terminal 2 appears to do nothing, because an interactive shell ignores SIGTERM. `kill -9 4702` works, but it ends the shell itself, and terminal 2 usually closes. The normal way to stop a loop is **Ctrl+C in its own terminal**, which sends the process a different signal, SIGINT (number 2).
-
-## Columns, sorting and counting
-
-`cut` picks columns, `sort` orders lines, and `uniq` collapses repeated lines. They are the backbone of command-line data analysis:
-
-```bash
-#date,county,state,fips,cases,deaths
-cut -d, -f1,3 covid.csv | head -n 10     # columns 1 and 3
-cut -d, -f1,3  covid.csv | head -n 10 | sort -r     # columns 1 and 3 most recent first
-cut -d, -f1,3  covid.csv | sort -r | head -n 10     # why is this slower?
-cut -d, -f1,3 covid.csv | head -n 10     # columns 1 and 3 most recent first
-cut -d, -f2-4 covid.csv | head -n 4     # columns 2 through 4
-cut -d, -f2-4 covid.csv | head -n 4 | uniq    #same output just pruned to unique rows
-cut -d, -f2-4 covid.csv | head -n 4 | uniq -c #counts the unique rows
-cut -d, -f4- covid.csv | head -n 4      # column 4 to the end
-cut -c1-7 covid.csv | head -n 4         # characters 1-7: not columns at all (the seven charas YYYY-MM in this case)
-cut -c1-7 covid.csv | uniq -c   # number of cases per month, most recent first
-cut -c1-7 covid.csv | uniq -c | sort -nr   # sorted as a number (not text), largest first
-```
-
-::: {.callout-warning}
-## `cut` doesn't understand quoted fields
-`cut -d, -f2` splits at *every* comma, even one inside quotes. For a file with a line `"Smith, John",Boston`, column 2 comes out as ` John"` instead of `Boston`. `covid.csv` has no quoted fields, so we are safe here, but real CSV files often do. Check with `grep -c '"'` first, and use a tool that understands CSV (R, Python, DuckDB) when it matters:
-
-```bash
-printf 'name,city\n"Smith, John",Boston\n' > quoted.csv
-cut -d, -f2 quoted.csv
-```
-:::
-
-
-To sort a CSV by a column, tell `sort` the separator with `-t` and the column with `-k`. Write the column twice, `-k5,5`, so it sorts on that column alone and not everything after it:
-
-```bash
-#date,county,state,fips,cases,deaths
-sort -t, -k5,5 -n -r covid.csv | head -n 30   # largest case counts, any county
-sort -t, -k3,3 -k5,5nr covid.csv | head -n 30 # state, then cases (high to low)
-sort -t, -k4,4 -u covid.csv | wc -l          # one row per distinct fips code
-```
-
-`uniq` removes repeated lines, but only repeated *neighbors*, which is why it almost always follows a `sort`:
-
-```bash
-printf 'a\nb\na\na\nc\n' | uniq               # a b a c: neighbors only
-printf 'a\nb\na\na\nc\n' | sort | uniq        # a b c
-printf 'a\nb\na\na\nc\n' | sort | uniq -c     # with counts: 3 a, 1 b, 1 c
-```
-
-Put them together and you can answer real questions about a file with 885,000 rows in a few seconds:
-
-```bash
-#date,county,state,fips,cases,deaths
-cut -d, -f3 covid.csv | sort | uniq -c | sort -rn | head -n 5   # top 5 states
-cut -d, -f3 covid.csv | sort -u | wc -l           # how many distinct "states"?
-cut -d, -f2,3 covid.csv | sort -u | wc -l         # distinct county-state pairs
-grep -E ',(Texas|Ohio),' covid.csv | cut -d, -f1,2,5 | head -n 2
-```
-
-The pattern `sort | uniq -c | sort -rn | head` is a useful idiom: *count how often each value occurs, and show the most common first*.
-
-
-## Chaining commands and exit status
-
-Recall that every command ends with an exit status: 0 for success, anything else for failure. The shell can chain commands based on it:
-
-```bash
-echo a; echo b                    # ; runs both, whatever happens
-mkdir results && cd results       # && : second only if the first worked
-pwd
-cd ..
-cd /nonexistent && echo "arrived in /nonexistent" # the echo never runs
-cd /nonexistent || echo "never arrived in /nonexistent"  # || : second only if first failed
-grep -q "Alaska" covid.csv && echo "found it"
-grep -q "Atlantis" covid.csv || echo "not there"
-```
