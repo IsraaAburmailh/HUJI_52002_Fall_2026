@@ -1,0 +1,63 @@
+---
+title: "Lecture 2: Advanced Linux"
+subtitle: "Big Data Algorithms"
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    number-sections: true
+    code-copy: true
+    embed-resources: true
+---
+
+
+
+# Processes
+
+We already met `ps`, `htop` and `kill` for finding and stopping a process (in "Finding and stopping a process" above). Here we look at how big the machine is, and at running things in the background.
+
+How big is the machine you are on? This matters for deciding how much data fits and how many things can run in parallel:
+
+```bash
+nproc                 # number of CPU cores (on a Mac: sysctl -n hw.ncpu)
+free -h                # memory used and free (Linux only)
+uptime                # how long it has been up, and the recent load average
+```
+
+**Demo: watch a process eat CPU.** Run this in one terminal, and `htop` in another:
+
+`yes` is a standard linux command. It prints "y" as fast as it can, using 100% of one CPU core
+
+```bash
+yes > /dev/null &     # a useless program that uses 100% of one core
+```
+
+The `&` runs it in the **background**, so you get your prompt back. Now manage it:
+
+```bash
+jobs                  # list background jobs in this terminal
+kill %1               # or: stop background job number 1
+```
+
+Another possibility:
+
+```bash
+yes > /dev/null &     # a useless program that uses 100% of one core
+fg                    # bring it back to the foreground; Ctrl+C then stops it
+```
+
+
+A job started with `&` belongs to your terminal window and stops when you close it. For something long, like a model fit on a remote server, use `nohup` ("no hang-up"), which keeps it alive after you log out. It uses the redirections from earlier to save the output:
+
+```bash
+nohup python3 long_job.py > out.log 2>&1 &    # survives logging out and 2>&1 ensures errors are logged into out.log as well
+tail -f out.log                               # check on it whenever you like
+```
+
+**Demo: watch a process use memory.** With `htop` open, and `free -h` run before, during and after, run:
+
+```bash
+python3 -c "x = 'a' * 10**9; input('Press Enter to quit')"
+```
+
+Watch the memory bar jump by about 1 GB (the `used` column of `free -h` does too). Press Enter and watch it drop. This is what "fits in RAM" means in practice.

@@ -284,7 +284,14 @@ find / -name "*.csv*" 2>/dev/null   # no more clutter from looking at useless di
 In 2>/dev/null, the 2> means "redirect channel 2 somewhere else", and /dev/null is a special file that throws away anything written to it. Everything on channel 2 is discarded, and channel 1 is untouched.
 
 
-**Redirects.** A **redirect** sends a command's input or output somewhere other than the keyboard and screen. The symbols are `>` (send output to a file), `>>` (add output to the end of a file), `2>` (send the error channel to a file) and `<` (read input from a file). The command itself doesn't change, only where its output goes:
+**Redirects.** A **redirect** sends a command's input or output somewhere other than the keyboard and screen, usually a file. The symbols are:
+
+- `>` (send stdout to a file), 
+- `>>` (add stdout to the end of a file), 
+- `2>` (send the stderr to a file) and 
+- `<` (receive input from a file). 
+
+Demos:
 
 ```bash
 echo "hello"                 # prints hello on the screen
@@ -324,7 +331,7 @@ ls . /nonexistent > all.txt 2>&1      # results and errors in one file the &1 sa
 cat all.txt
 ```
 
-More about `cat`... It can take a filename as we saw. But it can also take input from the keyboard:
+More about `cat`... Without file argument(s) it takes input from the keyboard:
 
 ```bash
 cat                              # start typing... until CTRL+D
@@ -335,7 +342,7 @@ cat keyboard_input.txt
 
 First we will introduce multiline strings. They begin with an arbitrary string which denote the end of input. This is usually
 'EOF' (for "end of file"). Thus EOF terminates the input. The "<<" is a redirection in the opposite direction from before. 
-Here it is fed in.
+It tells cat to take string input and not from the keyboard.
 
 ```bash
 cat << 'EOF'
@@ -394,11 +401,14 @@ echo 'Hello, $name'                   # but not inside ' '
 echo "Today is $(date +%F)"           # $(...) pastes in a command's output "date +%F" prints out YYYY-MM-DD format
 echo "This script is called $0"       # $0 is the script's own name, it's preset special variable
 echo "I got $# arguments; the first is $1"   # $# counts them, $1 is first, another preset special variable, $2 is second, etc
-if [ -f file1.txt ]; then             # test: does the file exist?
+if true; then                         # the simplest if: true always succeeds
+  echo "trivial if statement"
+fi                                    # close out the if-else with "fi"
+if [ -f file1.txt ]; then             # test: does the file exist? (see [...] explanation below)
   echo "file1.txt exists"
 else
   echo "file1.txt is missing"
-fi                                    # close out the if-else with "fi"
+fi
 for i in 1 2 3; do                    # repeat for each item in a list
   echo "round $i"
 done
@@ -409,8 +419,39 @@ greet
 greet Bob                             
 greet Bob Alex
 EOF
+```
+
+That creates the multiline file from the prompt. Now we run it
+
+```bash
 bash my_script.sh                     # run it
 bash my_script.sh 52002 52019         # run it with two arguments: $1 $2 ...
+```
+
+**What is `[ -f file1.txt ]`?** It is not the special `if` condition syntax. It is the same as the `test` command in linux. 
+This command returns to an "exit status" like a program, not to the screen (more on this later). It is an ordinary command, made of four separate words:
+
+| Piece | What it is |
+|-------|------------|
+| `[` | The name of a command (the same one as `test`). It is a real program, and also built into bash. |
+| `-f` | An option meaning "is it a regular file that exists?" |
+| `file1.txt` | The argument: the file to check. |
+| `]` | The last argument. It does nothing except close the pair of brackets. |
+
+Because `[` is a command, every piece needs spaces around it. The command prints nothing; it only sets its exit status (0 if the test is true, 1 if not), and `if` simply runs whatever command follows it and checks that status. This is also why `if true` works: `true` is also a command that always exits 0.
+
+```bash
+[ -f file1.txt ]              # nothing is printed! But that doesn't mean it didn't work
+echo $?                       # $? stores the exit status (in our case, 0 if the file exists, 1 if not)
+[ -f file1.txt ]; echo $?     # two linux commands on one line, separated by a semicolon
+[ ! -f file1.txt ]; echo $?   # negation of [ -f file1.txt ]
+test -f file1.txt; echo $?    # identical: test is [ without the ]
+[-f file1.txt]                # error: command not found (no space after [)
+[ -f file1.txt]               # error: missing ']' (no space before ])
+[ -d results ]; echo $?       # is it a directory?
+[ -s covid.csv ]; echo $?     # exists and is not empty?
+[ "$a" = "$b" ]; echo $?      # are the strings equal? (spaces around = required). Fails because it doesn't have context for $a, $b
+[ $n -gt 5 ]; echo $?         # is n greater than 5? Fails because it doesn't have context for $n
 ```
 
 **The shebang.** The first line, `#!/usr/bin/env bash`, is called the **shebang** (from "sharp" `#` and "bang" `!`). It tells the system which program should run the file when you execute it directly, as we will see below. For a Python script it would be `#!/usr/bin/env python3`, and for an R script `#!/usr/bin/env Rscript`. A few details:
@@ -469,9 +510,9 @@ Some strings you will meet:
 
 | String | What it means |
 |--------|---------------|
-| `-rw-r--r--` | an ordinary file: the owner can read and write, everyone else can only read |
-| `-rwxr-xr-x` | a program: everyone can run it, only the owner can change it |
-| `drwxr-xr-x` | a directory: everyone can enter and list it, only the owner can change it |
+| `-rw-r--r--` | an ordinary data file: the owner can read and write, everyone else can only read |
+| `-rwxr-xr-x` | a ordinary program file: everyone can run it, only the owner can change it |
+| `drwxr-xr-x` | an ordinary directory: everyone can enter and list its files, only the owner can change it |
 | `-rw-------` | a private file: only the owner can touch it (for passwords and keys) |
 
 The file `my_script.sh` we just created is `-rw-r--r--`. Nobody has an `x`, which is exactly why `./my_script.sh` said `Permission denied`. We need to "change its mode" via `chmod`
@@ -480,10 +521,10 @@ The file `my_script.sh` we just created is `-rw-r--r--`. Nobody has an `x`, whic
 ls -lha
 chmod +x my_script.sh   # make it executable for everyone:
 ls -lha
-./my_script.sh          # now executes
+./my_script.sh          # now it executes
 ```
 
-If this is my private script then, I want to make sure nobody else has access
+If this is my private script, then maybe I want to make sure nobody else has access to it:
 
 ```bash
 chmod 600 my_script.sh  # the "600" controls the locations of the permissions - read about it if you care
@@ -491,7 +532,7 @@ chmod 600 my_script.sh  # the "600" controls the locations of the permissions - 
 ls -lha                 #now only i can read and write
 chmod u+x my_script.sh  #and only i can execute
 ls -lha
-./my_script.sh          # now executes
+./my_script.sh          # now executes (the `./` is execute this one right here to avoid name clashes if they exist)
 ```
 
 If this can be used and edited by everyone (not usually recommended), then
@@ -519,13 +560,51 @@ Let's try adding my setting to it
 echo "my special new line" >> /etc/security/limits.conf
 ```
 
-No. I don't have rights. Can I give myself access?
+Fail. I don't have rights. Can I give myself access?
 
 ```bash
 chmod a+w /etc/security/limits.conf
 ```
 
-No, I'm not the owner.
+Fail. I'm not the owner. We will return to this later.
+
+###move this up to script
+
+## Your own commands: `PATH`, `export` and `alias`
+
+The `PATH` is a list of directories. When you type a command name, the shell looks for it in each of them 
+
+```bash
+echo $PATH
+cu #tab-tab
+```
+
+A good place for your own scripts is a `bin` folder in your home directory:
+
+```bash
+mkdir -p ~/bin                     # a folder for your own programs
+cp my_script.sh ~/bin/             # put the script there
+export PATH="$HOME/bin:$PATH"      # add ~/bin to the front of the PATH
+cd ~                               # navigate elsewhere (where my_script.sh is not found)
+ls -alh
+which my_script.sh                 # now the shell finds it...
+my_script.sh                       #we don't need './' because it's not in the home directory
+```
+
+The `export PATH` change lasts only as long as this terminal window. How to fix? To make it permanent, add the line to the file that the shell reads whenever it starts, `~/.bashrc` on Ubuntu (`~/.zshrc` on a Mac). An **alias** is a shortcut for a longer command, and it belongs in the same file:
+
+```bash
+echo 'export PATH="$HOME/bin:$PATH"' >> ~/.bashrc    # for every new terminal
+```
+
+You can also make cute shortcuts for yourself:
+
+```bash
+echo "alias ll='ls -lha'" >> ~/.bashrc               # a shortcut: ll
+source ~/.bashrc                    # read the file now, instead of reopening
+type ll                             # what kind of name is ll?
+ll
+```
 
 
 # Editing in the terminal
@@ -547,23 +626,23 @@ The survival kit:
 
 | Keys | What it does |
 |------|--------------|
+| `:<cmd>` +Enter | Run a `vi` command |
+| `:set nu` +Enter | Add line numbers |
 | `i` | Enter insert mode: now you can type |
 | Esc | Leave insert mode |
-| `:set nu` +Enter | Add line numbers |
-| `:7` +Enter | Go to line #7 |
-| `gg` | Go to the top of the file |
-| `G` | Go to the bottom of the file |
-| Ctrl+F | Go down one page (forward) |
-| Ctrl+B | Go up one page (back) |
+| `:767` +Enter | Go to line number 767 |
+| `gg` | Go to the top of the file (in insert mode) |
+| `G` | Go to the bottom of the file (in insert mode) |
+| Ctrl+F | Go forward = down one page (in insert mode) |
+| Ctrl+B | Go back = up one page (in insert mode) |
 | `:w` +Enter | Save |
 | `:q` +Enter | Quit |
 | `:wq` +Enter | Save and quit |
 | `:q!` +Enter | Quit **without** saving |
 | `/word` +Enter | Search for "word" (`n` for next match) |
-| `d3` | Delete 3 lines (`dd` alone deletes one) |
+| `d3` | Delete 3 lines (`dd` a/lone deletes one) |
 | `u` | Undo |
 
-The moving keys (`gg`, `G`, Ctrl+F, Ctrl+B) work when you are not in insert mode, so press Esc first.
 
 If you're ever stuck in `vi`, press Esc a few times, then type `:q!` and Enter.
 
@@ -584,10 +663,10 @@ You need to use "sudo" (i.e. super user do)
 sudo vi /etc/security/limits.conf
 ```
 
-Now of course, you need to be a super user to do this. The administrator gave it to you, 
-or you set up the machine yourself. If its your MAC or you set up WSL. This is the case.
+Now of course, you need to actually *be* a super user to do this. That is, another super user gave it to you, 
+or you set up the machine yourself. If its your MAC or you set up WSL, you are super user.
 Later in the semester, when we login to the university's machines, maybe not, unless they're
-giving you a carved out virtual environment. We will see later.
+giving you a carved out virtual environment. We will see later as I don't know how they set up their machines.
 
 You've seen `sudo` during your setup. You used it to update and install programs e.g. this will
 go to ubuntu's servers (and whatever other servers that catalog programs) and see if you have
@@ -601,9 +680,11 @@ sudo apt upgrade #if necessary
 
 # Looking at data without opening it
 
-This is an important section for big data. A file can be far larger than what you want to (or can) load into memory, but you can still look at it.
+A file can be far larger than what you want to (or can) load into memory, but you can still look at it.
 
-We will now return to our downloaded file. The columns are `date`, `county`, `state`, `fips` (a numeric code for the county), `cases` and `deaths`. Source: The New York Times, based on reports from state and local health agencies, <https://github.com/nytimes/covid-19-data>.
+We will now return to our downloaded file. The columns are `date`, `county`, `state`, `fips` 
+(a numeric code for the county), `cases` and `deaths`. Source: The New York Times, based 
+on reports from state and local health agencies, <https://github.com/nytimes/covid-19-data>.
 
 ```bash
 cat covid.csv         # print the whole file (bad idea for big files!)
@@ -616,21 +697,30 @@ tail -n 3 covid.csv   # last 3 lines
 
 # Pipes (similar to redirection)
 
-A redirect connects a command to a **file**. A **pipe** connects a command to **another command**. The symbol is `|`, called the pipe or the vertical bar (on most keyboards it is Shift+Backslash). It sends the stdout of the command on its left into the stdin of the command on its right:
+A redirect connects a command usually to a **file**. A **pipe** connects a command to **another command**. 
+The symbol is `|`, called the pipe or the vertical bar. It sends the stdout of the command on its left 
+into the stdin of the command on its right:
 
 ```
 command1 | command2        # command1's output becomes command2's input
 ```
 
-Compare the two ways of counting the first three lines of a file:
+Compare the two ways of counting the first three lines of a file. With a redirect, you need to 
 
 ```bash
 head -n 3 covid.csv > first3.txt   # with a redirect: save to a file...
 wc -l < first3.txt                 # ...then feed the file to the next command
-head -n 3 covid.csv | wc -l        # with a pipe: both steps at once, no file
+rm first3.txt                      # clean up after yourself!
 ```
 
-Both print 3, but the pipe needs no temporary file, and the second command starts working as soon as the first produces output. A few more small ones:
+Much easier with a pipe command:
+
+```bash
+head -n 3 covid.csv | wc -l        # with a pipe: both steps at once, no file
+#^^^^^^^^^^^^^^^^^^   ^^^^^
+#     producer        consumer
+```
+ A few more small ones:
 
 ```bash
 ls | wc -l                    # how many items are in this folder?
@@ -641,67 +731,42 @@ echo "hello world" | wc -w    # 2: the text from echo became wc's input
 You can chain as many commands as you like. Each one does one small job:
 
 ```bash
-grep ",California," covid.csv | head    # rows for California, first 10
-grep -c ",California," covid.csv        # count of rows for California
-cut -d, -f3 covid.csv | head            # just the 3rd column (the state)
-cut -d, -f3 covid.csv | tail -n +2 | sort | uniq -c   # count rows per state
+tail covid.csv | sort | uniq  #we'll see the sort and uniq commands soon
 ```
-
-Read the last line left to right: take column 3, drop the header line, sort it, then count identical neighbors. Only stdout goes through a pipe. Errors still reach the screen unless you add `2>&1`:
+Pipes process data as a **stream**: each command reads a line, handles it, and passes it on. None of these commands loads the whole file into memory, which is why they work on files much bigger than your RAM. This is the idea behind the one-pass algorithms (which we may see later). For example:
 
 ```bash
-ls . /nonexistent | wc -l            # the error is displayed, not counted
-ls . /nonexistent 2>&1 | wc -l       # now the error line is counted too
+cat covid.csv | head
 ```
 
-::: {.callout-note}
-## Why this matters for big data
-Pipes process data as a **stream**: each command reads a line, handles it, and passes it on. None of these commands loads the whole file into memory, which is why they work on files much bigger than your RAM. This is the idea behind the one-pass algorithms we'll study later.
-:::
+`cat` does not load the file. It reads a block (around 128 KB), sends it to the pipe, and repeats. Its memory use is tiny, however large the file is. Above when we ran `cat covid.csv`, it started printing immediately. If it had to load the whole file first, nothing would appear until the load finished.
 
-## Input from a file, and `tee`
+A pipe has a small buffer, and that is what keeps it streaming. On Linux the pipe holds about 64 KB. When it is full, the producer (the command on the left) is paused until the consumer (the command on the right) catches up. This is called backpressure. So even a 100 GB file can usually pass through `cat | ... | ...` using a few megabytes in total, with all the commands running at the same time.
 
-A pipe feeds a command from another command. To feed a command from a **file** instead, use the input redirect `<`:
+Once `head` quits, cat gets a "broken pipe" signal and stops, so it never bothers to read from the rest of the file.
+
+Here's a nice example of pipe usage. To read a CSV comfortably, line up the columns with the `column` command:
 
 ```bash
-wc -l covid.csv          # prints the count and the file's name
-wc -l < covid.csv        # the file feeds stdin: no name printed
-sort < covid.csv | head -n 3     # the same as: sort covid.csv | head -n 3
+head covid.csv | column -s, -t    # -s, : fields are separated by commas, -t : table format
 ```
 
-The second form is handy when you want the number alone, for example to use in a script (see below).
+## Searching with grep
 
-Finally, `tee` copies its input to a file and also passes it along, like a T-junction in a pipe:
-
-```bash
-head -n 3 covid.csv | tee first3.txt | wc -l    # saves a copy, counts lines
-echo "extra" | tee -a first3.txt                # -a appends, like >>
-```
-
-
-To read a CSV comfortably, line up the columns with `column` (it is a command that you pipe data into):
+`grep` (global regular expression print) prints the lines of its input argument that match a pattern. We will demo this 
+using our dataset as the input argument and use "| head" to limit the results shown to screen or "| wc -l" to count.
 
 ```bash
-head covid.csv | column -s, -t    # -s, : fields are separated by commas
-```
-
-## Searching inside files with grep
-
-`grep` prints the lines of its input that match a pattern. We have used it with a plain word. These examples all search `covid.csv` and show how much one command can do when you add options:
-
-```bash
-grep "Alaska" covid.csv | head -n 2     # lines containing Alaska
-grep -i "alaska" covid.csv | head -n 2  # -i: ignore upper/lower case
-grep -v "Alaska" covid.csv | head -n 2  # -v: lines that do NOT match
+grep "Alaska" covid.csv | head -n 4     # lines containing Alaska
+grep -i "alaska" covid.csv | head -n 4  # -i: ignore upper/lower case
+grep -v "Alaska" covid.csv | head -n 4  # -v: lines that do NOT match
 grep -c "Alaska" covid.csv              # -c: count matching lines
 grep -vc "Alaska" covid.csv             # options combine: count the others
-grep -n "Alaska" covid.csv | head -n 2  # -n: show line numbers
-grep -m 2 "Alaska" covid.csv            # -m 2: stop after 2 matches
-grep -o "2020-03-[0-9][0-9]" covid.csv | head -n 2   # -o: only the match
-grep -w "Ada" covid.csv | head -n 2     # -w: whole words only
+grep -n "Alaska" covid.csv | head -n 4  # -n: show line numbers
+grep -m 2 "Alaska" covid.csv            # -m 2: stop after 2 matches (the color highlighting is my terminal being smart)
+grep -o "2020-03-[0-9][0-9]" covid.csv | head -n 2   # -o: print out only the match component
 grep -c "Ada" covid.csv                 # compare: also counts Adams, Adair
-grep -A 1 -B 1 -m 1 "Anchorage" covid.csv   # 1 line After, 1 Before
-grep -C 2 -m 1 "Anchorage" covid.csv        # -C 2: 2 lines of context
+grep -m 1 -C 2 "Anchorage" covid.csv    # -C 2: 2 lines of context
 ```
 
 You can search for several things at once, and in many files:
@@ -717,8 +782,6 @@ grep -rl "Cook" .                       # ...and just list which files
 grep -r --include="*.csv" -l "Cook" .   # ...but only in csv files
 ```
 
-(`-f pats.txt` assumes you made that file, for example `printf 'Alaska\nHawaii\n' > pats.txt`.)
-
 `grep` also reports whether it found anything, through its **exit status**, which every command has: 0 means success, anything else means failure. The special variable `$?` holds the status of the last command:
 
 ```bash
@@ -727,14 +790,24 @@ grep "Atlantis" covid.csv; echo $?              # 1: not found
 grep -q "Alaska" covid.csv; echo $?             # -q: quiet, only the status
 ```
 
-The exit status is what scripts use to make decisions, as we will see.
+The exit status is what scripts use to make decisions.
 
-::: {.callout-warning}
-## `grep` matches anywhere in the line
-`grep -c ",Texas," covid.csv` returns 67,497 but Texas has 67,002 rows. The other 495 are the counties named "Texas" in Missouri and in Oklahoma. A plain word can match in the wrong column. The fix is a more precise pattern, which is where regular expressions come in.
-:::
+**`grep` after another command.** So far `grep` read a file. It can also read the output of any other command through a pipe, which makes it a filter: the first command produces a lot of output, and `grep` keeps only the lines you care about. When no file name is given, `grep` reads its input from the pipe.
 
-## Regular expressions
+```bash
+ls | grep csv                       # only the names containing csv
+ls -l | grep "^d"                   # only directories: their line starts with d
+ls -l | grep -v "^d"                # -v: everything except directories
+find . -name "*.csv" | grep covid   # csv files whose path also contains covid
+find . -type f | grep -v "\.git/"   # all files, but skip anything inside .git
+df -h | grep -v tmpfs               # disk usage without the tmpfs lines
+env | grep "^HOME"                  # one environment variable
+history | grep chmod                # find that command you ran last week
+```
+
+Notice that the first command does the broad work and `grep` narrows it down. You can keep going, e.g. `find . -type f | grep csv | grep -v old | wc -l` counts the csv files that are not "old".
+
+## Regular expressions (for you at home)
 
 A **regular expression** (regex) is a pattern that describes a set of strings. We have been using the simplest regex, a plain word that matches itself. The real power comes from special characters. A few meet you almost everywhere (R, Python, SQL, text editors), so learning them pays off all semester.
 
@@ -782,8 +855,7 @@ Precision: the `[^,]*` idiom means "any run of characters that isn't a comma", i
 ```bash
 # columns: date , county , state , ...  so the state is after two commas
 grep -Ec '^[^,]*,[^,]*,Texas,' covid.csv    # only rows whose STATE is Texas
-grep ',Texas,' covid.csv | grep -v '^[^,]*,[^,]*,Texas,' \
-  | cut -d, -f2,3 | sort -u
+grep ',Texas,' covid.csv | grep -v '^[^,]*,[^,]*,Texas,'
 ```
 
 The last line shows the 495 impostors. Missing values are easy to find as well. The `fips` column is empty for New York City (the data combines its five boroughs) and for the rows marked "Unknown", so those rows contain two commas in a row:
@@ -794,7 +866,6 @@ grep ',,' covid.csv | head -n 2              # which ones?
 grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2},' covid.csv | wc -l    # valid dates
 grep -Ev '^[0-9]{4}-[0-9]{2}-[0-9]{2},' covid.csv           # the odd ones out
 grep -E '^2020-03-15,(New York City|Baldwin),' covid.csv    # a group
-grep -E 'Cook,(Illinois|Georgia)' covid.csv | cut -d, -f3 | sort | uniq -c
 ```
 
 The last two lines of that block show why `grep` is a data-cleaning tool: the fourth finds rows that do *not* look like data (here, the header), which is how you spot problems in a file too big to read. The same idea works with files that have comment lines:
@@ -811,108 +882,116 @@ grep -v -e '^#' -e '^$' cfg.txt       # drop comments AND blank lines
 Both are patterns, and the characters look alike, but they are different languages. In the shell, `*.csv` means "any name ending in .csv". The same thing as a regex is `.*\.csv$`: `.` is any character, `*` repeats it, `\.` is a real dot, and `$` is the end. In particular, the wildcard `*` stands alone, while the regex `*` repeats the thing before it. The shell uses wildcards for file *names*, and `grep` uses regular expressions for text *inside* files.
 :::
 
-::: {.callout-tip}
-## Try it
-1. How many rows are from March 2020? Do it with one `grep`, and again with `cut`, `grep` and `wc`.
-2. How many rows have 5 or more digits in the `cases` column?
-3. How many rows are for the *state* of Washington? Careful: `grep ",Washington,"` also matches the many counties named Washington.
-4. List the distinct states whose name starts with "New".
-:::
 
+## Finding and stopping a process
 
 `tail -f` keeps showing new lines as they are added to a file, which is how you watch a log of a long-running job. To try it, open a second terminal and run the first line, which adds the date to `logfile.txt` every second. Then, in the first terminal, run the second line. Press Ctrl+C in both when done.
 
 ```bash
 cd ~/workspace/HUJI_52002_Fall_2026/scratch/lec01    # terminal 2
 while true; do date >> logfile.txt; sleep 1; done    # terminal 2
-tail -f logfile.txt                                  # terminal 1
+tail -f logfile.txt                                  # terminal 1 .... then CTRL+C...
 ```
 
 What if we forget to close terminal 2?
-
-## Finding and stopping a process
 
 Every running program is a **process** with an ID number (its **PID**). Let's open a third terminal. The command `ps` lists processes:
 
 ```bash
 ps                    # your processes in this terminal (not super interesting)
                       # note "bash" is running - it's the program actually receiving your prompt commands
-ps -u $USER | head    # just your processes, from every terminal
-ps aux | head         # every process on the machine
+ps -u $USER           # just your processes, from every terminal
+ps aux                # every process on the machine
 ```
 
-In `ps aux`, `a` means processes of all users, `u` means a user-oriented format (with the owner, PID, `%CPU`, `%MEM` and command) and `x` includes programs that have no terminal. The list is long, so we use `head`. To find one process by name, filter the list with `grep`:
+In `ps aux`, `a` means processes of all users, `u` means a user-oriented format (with the owner, PID, `%CPU`, `%MEM` and command) and `x` includes programs that have no terminal. To find one process by name, filter the list with a pipe + `grep`:
 
 ```bash
 ps aux | grep sleep   # find a process by name (grep filters the list)
-pgrep -a sleep        # the same, simpler: PID and full command of matches
 ```
 
-The first command prints something like this (your numbers will differ):
+I'll see something like this:
 
 ```
-kapelner   4821  0.0  0.0  17664  8064 pts/0  S+  18:02  0:00 sleep 1
-kapelner   4830  0.0  0.0   6716  2560 pts/2  S+  18:02  0:00 grep sleep
+USER      PID     %CPU %MEM  VSZ   RSS   TTY    STAT START TIME COMMAND
+kapelner  2200782  0.0  0.0  17644 7936  pts/0  S+   23:45 0:00 sleep 300
 ```
 
-The second line is the `grep` command itself, because its own command line contains the word "sleep". `pgrep` leaves itself out, which is one reason to prefer it.
+For the columns not self explanatory:
+- `PID` indicates the linux process id number
+- `VSZ` is the memory reserved
+- `RSS` is memory occupied
+- `TTY` is the terminal ID the process is connected to
+- `STAT` is status (where S+ means sleeping)
 
-**Why did we search for `sleep` and not for `while`?** There is no program called `while`. The loop is part of the bash language, so it is run by the shell itself, the `bash` in terminal 2. What you can see is the loop's children: every second it starts a new `sleep 1`, which exits after one second, so its PID is different each time you look. What stays the same is the **parent**. Ask `ps` for the parent PID (PPID) of each process, and then look up the parent:
-
-```bash
-ps -axo pid,ppid,command | grep "[s]leep"   # PID, parent PID, command
-#  4821  4702 sleep 1                       # the loop's shell is process 4702
-ps -p 4702                                  # who is process 4702?
-#    PID TTY          TIME CMD
-#   4702 pts/0    00:00:00 bash
-```
-
-The `[s]leep` is a pattern that matches the word "sleep" but not its own text, so `grep` doesn't list itself. The `-axo` form of `ps` works on both Linux and a Mac.
+**Why did we search for `sleep` and not for `while`?** There is no program called `while`. The loop is part of the bash language, so it is run by the shell itself, the `bash` in terminal 2. What you can see is the command in the loop's children: every second it executes `sleep 1`.
 
 To watch processes live instead, use `htop`, and press `q` to quit:
 
 ```bash
-htop                  # live view of every process, CPU and memory
-top                   # the older version, available everywhere
+htop
 ```
 
-On Ubuntu, install `htop` with `sudo apt install htop`. On a Mac, `top` is already there, `brew install htop` gets `htop`, and the Activity Monitor app shows the same information in a window. In `htop`, F4 filters the list (type `sleep`), F5 shows the processes as a tree (the loop's `bash` with its `sleep` below it), F9 sends a signal to the selected process, and `q` quits.
+F4 filters the list (type `sleep`), F9 sends a signal to the selected process, and `q` quits.
 
 **Stopping a process.** The command `kill` takes a PID. Despite its name, it sends the process a **signal**, and the default signal is a polite request to stop, which lets the program clean up (close files, remove temporary data):
 
 ```bash
 kill 4702             # ask process 4702 to stop (signal SIGTERM)
 kill -9 4702          # force it to stop at once (SIGKILL): last resort
-pkill sleep           # stop every process named sleep
-pkill -f long_job.py  # -f: match the whole command line, not just the name
 ```
 
-`kill -9` cannot be refused, but the program gets no chance to clean up and may leave half-written files behind, so try plain `kill` first. You can only stop your own processes. Someone else's, or root's, needs `sudo`.
+`kill -9` cannot be refused, but the program gets no chance to clean up and may leave half-written files behind, so try plain `kill` first. You can only stop your own processes. Someone else's, or root's, needs `sudo`. Let's try it:
+
+```bash
+ps aux | grep sleep   # find a process by name (grep filters the list)
+kill <num> 
+```
+
+That didn't work because the PID changes every second! We need to find the PID of the parent of this process
+(i.e., the bash program running it)
+
+```bash
+ps -axo pid,ppid,command | grep "sleep"   # PID, parent PID, command
+ps 418990
+```
+
+Now let's stop it gracefully
+
+```bash
+kill 418990
+ps aux | grep sleep
+```
+
+Didn't work. Let's force it to stop:
+
+```bash
+kill -9 418990
+ps aux | grep sleep
+```
 
 Our loop teaches two lessons about this:
 
-- **Stop the parent, not the child.** `pkill sleep` stops the current `sleep 1`, but the loop immediately starts a new one. The loop only ends when its shell stops.
-- **Interactive shells ignore the polite request.** `kill 4702` on the shell in terminal 2 appears to do nothing, because an interactive shell ignores SIGTERM. `kill -9 4702` works, but it ends the shell itself, and terminal 2 usually closes. The normal way to stop a loop is **Ctrl+C in its own terminal**, which sends the process a different signal, SIGINT (number 2).
-
-::: {.callout-tip}
-## Try it
-In terminal 2 run `sleep 300`, which blocks the prompt. In terminal 3 run `pgrep -a sleep` to see its PID, then `kill` that PID. Terminal 2 prints `Terminated` and gives the prompt back. Then run it again and stop it with `kill -9`, and compare.
-:::
-
-
-
-
+- Stop the parent, not the child.
+- Interactive shells ignore the polite request. `kill 4702` on the shell in terminal 2 appears to do nothing, because an interactive shell ignores SIGTERM. `kill -9 4702` works, but it ends the shell itself, and terminal 2 usually closes. The normal way to stop a loop is **Ctrl+C in its own terminal**, which sends the process a different signal, SIGINT (number 2).
 
 ## Columns, sorting and counting
 
 `cut` picks columns, `sort` orders lines, and `uniq` collapses repeated lines. They are the backbone of command-line data analysis:
 
 ```bash
-cut -d, -f1,3 covid.csv | head -n 2     # columns 1 and 3
-cut -d, -f2-4 covid.csv | head -n 2     # columns 2 through 4
-cut -d, -f4- covid.csv | head -n 2      # column 4 to the end
-cut -c1-7 covid.csv | head -n 2         # characters 1-7: not columns at all
-cut -c1-7 body.csv | sort | uniq -c     # rows per month (2020-01 etc.)
+#date,county,state,fips,cases,deaths
+cut -d, -f1,3 covid.csv | head -n 10     # columns 1 and 3
+cut -d, -f1,3  covid.csv | head -n 10 | sort -r     # columns 1 and 3 most recent first
+cut -d, -f1,3  covid.csv | sort -r | head -n 10     # why is this slower?
+cut -d, -f1,3 covid.csv | head -n 10     # columns 1 and 3 most recent first
+cut -d, -f2-4 covid.csv | head -n 4     # columns 2 through 4
+cut -d, -f2-4 covid.csv | head -n 4 | uniq    #same output just pruned to unique rows
+cut -d, -f2-4 covid.csv | head -n 4 | uniq -c #counts the unique rows
+cut -d, -f4- covid.csv | head -n 4      # column 4 to the end
+cut -c1-7 covid.csv | head -n 4         # characters 1-7: not columns at all (the seven charas YYYY-MM in this case)
+cut -c1-7 covid.csv | uniq -c   # number of cases per month, most recent first
+cut -c1-7 covid.csv | uniq -c | sort -nr   # sorted as a number (not text), largest first
 ```
 
 ::: {.callout-warning}
@@ -925,26 +1004,14 @@ cut -d, -f2 quoted.csv
 ```
 :::
 
-`sort` has many options:
-
-```bash
-printf '10\n9\n100\n' | sort          # 10, 100, 9: text order, not numeric!
-printf '10\n9\n100\n' | sort -n       # 9, 10, 100: -n sorts as numbers
-printf '10\n9\n100\n' | sort -nr      # 100, 10, 9: -r reverses
-printf 'b\nA\na\nB\n' | sort          # a A b B: lower and upper case mix
-printf 'b\nA\na\nB\n' | sort -f       # -f: ignore case when comparing
-printf '1K\n2G\n3M\n' | sort -h       # 1K, 3M, 2G: -h understands K, M, G
-sort -u body.csv | wc -l              # -u: sort, dropping duplicate lines
-sort -R body.csv | head -n 3          # -R: shuffle the lines (random rows)
-printf 'x\ny\nz\n' | sort -c; echo $? # -c: just check if sorted; 0 = yes
-```
 
 To sort a CSV by a column, tell `sort` the separator with `-t` and the column with `-k`. Write the column twice, `-k5,5`, so it sorts on that column alone and not everything after it:
 
 ```bash
-sort -t, -k5,5 -n -r body.csv | head -n 3   # largest case counts, any county
-sort -t, -k3,3 -k5,5nr body.csv | head -n 3 # state, then cases (high to low)
-sort -t, -k4,4 -u body.csv | wc -l          # one row per distinct fips code
+#date,county,state,fips,cases,deaths
+sort -t, -k5,5 -n -r covid.csv | head -n 30   # largest case counts, any county
+sort -t, -k3,3 -k5,5nr covid.csv | head -n 30 # state, then cases (high to low)
+sort -t, -k4,4 -u covid.csv | wc -l          # one row per distinct fips code
 ```
 
 `uniq` removes repeated lines, but only repeated *neighbors*, which is why it almost always follows a `sort`:
@@ -953,56 +1020,20 @@ sort -t, -k4,4 -u body.csv | wc -l          # one row per distinct fips code
 printf 'a\nb\na\na\nc\n' | uniq               # a b a c: neighbors only
 printf 'a\nb\na\na\nc\n' | sort | uniq        # a b c
 printf 'a\nb\na\na\nc\n' | sort | uniq -c     # with counts: 3 a, 1 b, 1 c
-printf 'a\nb\na\na\nc\n' | sort | uniq -d     # -d: only lines that repeat
-printf 'a\nb\na\na\nc\n' | sort | uniq -u     # -u: lines that appear once
-printf 'a\nA\n' | sort | uniq -ic             # -i: ignore case
 ```
 
 Put them together and you can answer real questions about a file with 885,000 rows in a few seconds:
 
 ```bash
-cut -d, -f3 body.csv | sort | uniq -c | sort -rn | head -n 5   # top 5 states
-cut -d, -f3 body.csv | sort -u | wc -l           # how many distinct "states"?
-cut -d, -f2,3 body.csv | sort -u | wc -l         # distinct county-state pairs
-cut -d, -f1 body.csv | sort -u | head -n 1       # the first date in the file
-grep -E ',(Texas|Ohio),' body.csv | cut -d, -f1,2,5 | head -n 2
+#date,county,state,fips,cases,deaths
+cut -d, -f3 covid.csv | sort | uniq -c | sort -rn | head -n 5   # top 5 states
+cut -d, -f3 covid.csv | sort -u | wc -l           # how many distinct "states"?
+cut -d, -f2,3 covid.csv | sort -u | wc -l         # distinct county-state pairs
+grep -E ',(Texas|Ohio),' covid.csv | cut -d, -f1,2,5 | head -n 2
 ```
 
-The pattern `sort | uniq -c | sort -rn | head` is the single most useful idiom here: *count how often each value occurs, and show the most common first*. Notice that `cut -d, -f3 | sort -u | wc -l` says 55, not 50: the file includes DC, Puerto Rico, Guam and other territories.
+The pattern `sort | uniq -c | sort -rn | head` is a useful idiom: *count how often each value occurs, and show the most common first*.
 
-::: {.callout-tip}
-## Try it
-1. Which five days have the most rows? (`cut`, `sort`, `uniq -c`, `sort -rn`, `head`)
-2. Which county has the largest number of deaths, ever? (Hint: `sort` by column 6.)
-3. How many distinct county names are there? Why is it different from the number of distinct (county, state) pairs?
-:::
-
-# Shell scripts
-
-A **script** is a text file of commands that the shell runs one after another. Anything you type at the prompt, you can save in a script and rerun. Before we write one, we need a few pieces of the shell's own language.
-
-## Variables and quoting
-
-```bash
-name="Ada"                  # make a variable: NO spaces around the =
-echo $name                  # use it with a $
-echo "Hello, $name"         # inside double quotes, $name is replaced
-echo 'Hello, $name'         # inside single quotes, nothing is replaced
-echo "Today is $(date +%F)" # $(...) runs a command and pastes in its output
-echo "files here: $(ls | wc -l)"
-echo "$(wc -l < covid.csv) rows"
-```
-
-Quotes also protect spaces. A name with a space is two words to the shell unless you quote it:
-
-```bash
-touch "my file.txt"         # one file with a space in its name
-ls my file.txt              # error: looks for files "my" and "file.txt"
-ls "my file.txt"            # works
-ls my\ file.txt             # works: a backslash escapes the space
-```
-
-The habit to build: **put double quotes around every variable** (`"$name"`, `"$file"`), because a filename with a space will otherwise break your script.
 
 ## Chaining commands and exit status
 
@@ -1011,243 +1042,10 @@ Recall that every command ends with an exit status: 0 for success, anything else
 ```bash
 echo a; echo b                    # ; runs both, whatever happens
 mkdir results && cd results       # && : second only if the first worked
-cd /nonexistent && echo "arrived" # the echo never runs
-false || echo "first one failed"  # || : second only if first failed
+pwd
+cd ..
+cd /nonexistent && echo "arrived in /nonexistent" # the echo never runs
+cd /nonexistent || echo "never arrived in /nonexistent"  # || : second only if first failed
 grep -q "Alaska" covid.csv && echo "found it"
 grep -q "Atlantis" covid.csv || echo "not there"
-true; echo $?                     # 0
-false; echo $?                    # 1
 ```
-
-## Your first script
-
-Let's write a script that counts the rows for one state. The next command creates the file `count_state.sh` with the text between the two `EOF` lines (this is a "here document", a way to type a file into the terminal; you could equally write the file with `vi`):
-
-```bash
-cat > count_state.sh << 'EOF'
-#!/usr/bin/env bash
-# Usage: ./count_state.sh FILE STATE
-if [ $# -lt 2 ]; then
-  echo "usage: $0 FILE STATE" >&2
-  exit 1
-fi
-file=$1
-state=$2
-n=$(grep -Ec "^[^,]*,[^,]*,$state," "$file")
-echo "$state has $n rows in $file"
-EOF
-```
-
-What is in it:
-
-- `#!/usr/bin/env bash` on the first line (the "shebang") says which program should run the file.
-- Lines starting with `#` are comments.
-- `$1`, `$2`, ... are the **arguments** you type after the script's name. `$#` is how many there are, `$0` is the script's name, and `"$@"` is all of them.
-- `if [ ... ]; then ... fi` runs commands only when a test is true. Here: "if there are fewer than 2 arguments". The spaces inside `[ ]` are required.
-- `>&2` sends the message to stderr, and `exit 1` stops with a failure status.
-- Everything else is commands you already know.
-
-There are two ways to run it:
-
-```bash
-bash count_state.sh covid.csv Texas     # run it through bash explicitly
-./count_state.sh covid.csv Texas        # error: Permission denied
-ls -l count_state.sh                    # no x: not executable
-chmod +x count_state.sh                 # add execute permission (x)
-ls -l count_state.sh                    # -rwxr-xr-x: now it has x
-./count_state.sh covid.csv Texas        # works
-count_state.sh covid.csv Texas          # error: command not found
-./count_state.sh covid.csv              # too few arguments: prints the usage
-echo $?                                 # 1: the script's exit status
-./count_state.sh covid.csv Utah 2>/dev/null   # hide any error messages
-```
-
-The `./` means "the file in this directory". Without it, the shell looks for the name only in the directories of your `PATH` (which we met earlier), and the current directory isn't among them. See the last section below for how to put your scripts on the `PATH`.
-
-## Loops and tests
-
-A **for loop** repeats commands for every item in a list. This is how you run the same analysis on many states, files or months:
-
-```bash
-for i in 1 2 3; do echo "round $i"; done          # a fixed list
-for i in $(seq 1 5); do echo "n=$i"; done         # seq makes a sequence
-for i in {1..5}; do echo "n=$i"; done             # a shortcut for the same
-for s in Texas Ohio Utah; do                      # a loop can span lines
-  echo "$s: $(grep -Ec "^[^,]*,[^,]*,$s," covid.csv)"
-done
-for m in 01 02 03; do echo "$m $(grep -c "^2020-$m" covid.csv)"; done
-for s in Texas Ohio Utah; do                      # a file for each state
-  grep -E "^[^,]*,[^,]*,$s," covid.csv > "$s.csv"
-done
-for f in *.csv; do echo "$f has $(wc -l < "$f") lines"; done   # all csv files
-head -n 2 covid.csv | while read line; do echo "got: $line"; done
-```
-
-The `if` test can check many things. The brackets `[ ... ]` are really a command called `test`, and the useful ones are:
-
-| Test | True when |
-|------|-----------|
-| `[ -f covid.csv ]` | the file exists |
-| `[ -d results ]` | the directory exists |
-| `[ -s covid.csv ]` | the file exists and is not empty |
-| `[ "$a" = "$b" ]` | the two strings are equal |
-| `[ $n -gt 5 ]` | the number is greater than 5 (also `-lt -ge -le -eq -ne`) |
-| `[ ! -f covid.csv ]` | the test inside is NOT true |
-
-```bash
-if [ -f covid.csv ]; then echo "exists"; else echo "missing"; fi
-[ -s Utah.csv ] && echo "Utah.csv has data"
-n=7; if [ $n -gt 5 ]; then echo "big"; fi
-if grep -q "Utah" covid.csv; then echo "Utah is in the file"; fi
-if [ ! -d results ]; then mkdir results; fi
-```
-
-The last line of the block above shows how `if` works with any command, not just `[ ]`: it asks "did this command succeed (exit status 0)?" That is also why `grep -q` exists.
-
-::: {.callout-tip}
-## Try it
-Write a script `top_states.sh` that takes a file and a number N, and prints the N states with the most rows. Use `$1` and `$2`, and the pipeline from the sorting section (`head -n "$2"`). Then make it print a usage message and exit if the file does not exist.
-:::
-
-## Your own commands: `PATH`, `export` and `alias`
-
-The `PATH` is a list of directories. When you type a command name, the shell looks for it in each of them. A good place for your own scripts is a `bin` folder in your home directory:
-
-```bash
-mkdir -p ~/bin                       # a folder for your own programs
-cp count_state.sh ~/bin/             # put the script there
-export PATH="$HOME/bin:$PATH"        # add ~/bin to the front of the PATH
-which count_state.sh                 # now the shell finds it...
-count_state.sh covid.csv Utah        # ...and it runs from anywhere
-```
-
-`export` makes a variable available to the programs you start, and the `PATH` change lasts only as long as this terminal window. To make it permanent, add the line to the file that the shell reads whenever it starts, `~/.bashrc` on Ubuntu (`~/.zshrc` on a Mac). An **alias** is a shortcut for a longer command, and it belongs in the same file:
-
-```bash
-echo 'export PATH="$HOME/bin:$PATH"' >> ~/.bashrc    # for every new terminal
-echo "alias ll='ls -lha'" >> ~/.bashrc               # a shortcut: ll
-source ~/.bashrc                    # read the file now, instead of reopening
-type ll                             # what kind of name is ll?
-```
-
-# Processes
-
-We already met `ps`, `htop` and `kill` for finding and stopping a process (in "Finding and stopping a process" above). Here we look at how big the machine is, and at running things in the background.
-
-How big is the machine you are on? This matters for deciding how much data fits and how many things can run in parallel:
-
-```bash
-nproc                 # number of CPU cores (on a Mac: sysctl -n hw.ncpu)
-free -h                # memory used and free (Linux only)
-uptime                # how long it has been up, and the recent load average
-```
-
-**Demo: watch a process eat CPU.** Run this in one terminal, and `htop` in another:
-
-```bash
-yes > /dev/null &     # a useless program that uses 100% of one core
-```
-
-The `&` runs it in the **background**, so you get your prompt back. Now manage it:
-
-```bash
-jobs                  # list background jobs in this terminal
-fg                    # bring it to the foreground (then Ctrl+C stops it)
-kill %1               # or: stop background job number 1
-pkill yes             # or: stop every process named yes (or kill its PID)
-```
-
-Forgot the `&`? You can still get your prompt back. Run something slow in the foreground, such as `sleep 300`, and then:
-
-```bash
-# press Ctrl+Z   # pauses the running command and gives you the prompt back
-bg               # lets the paused command continue, in the background
-jobs             # it is listed as Running
-fg               # bring it back to the foreground; Ctrl+C then stops it
-```
-
-A job started with `&` belongs to your terminal window and stops when you close it. For something long, like a model fit on a remote server, use `nohup` ("no hang-up"), which keeps it alive after you log out. It uses the redirections from earlier to save the output:
-
-```bash
-nohup python3 long_job.py > out.log 2>&1 &    # survives logging out
-tail -f out.log                               # check on it whenever you like
-```
-
-**Demo: watch a process use memory.** With `htop` open, and `free -h` run before, during and after, run:
-
-```bash
-python3 -c "x = 'a' * 10**9; input('Press Enter to quit')"
-```
-
-Watch the memory bar jump by about 1 GB (the `used` column of `free -h` does too). Press Enter and watch it drop. This is what "fits in RAM" means in practice.
-
-# Wrap-up
-
-## Cheat sheet
-
-| Command | What it does |
-|---------|--------------|
-| `pwd`, `ls`, `cd` | Where am I, what's here, go somewhere |
-| `mkdir`, `touch` | Make a directory, make an empty file |
-| `cp`, `mv`, `rm` | Copy, move/rename, delete (permanently!) |
-| `*`, `?`, `[...]` | Wildcards: match many file names at once |
-| `find` | Search for files by name, size, age, type, and act on them |
-| `chmod`, `sudo` | Change permissions, run as administrator |
-| `vi` | Edit files in the terminal |
-| `cat`, `less`, `column` | Print a file, scroll through a file, line up columns |
-| `head`, `tail`, `wc` | First lines, last lines, count lines/words/bytes |
-| `du`, `df`, `file`, `stat` | Space used, free space, what a file is |
-| `time` | How long a command takes |
-| `>`, `>>`, `2>`, `<`, `tee` | Write, append, send errors, read input, copy a stream |
-| <code>&#124;</code> | Pipe: stdout of one command into stdin of the next |
-| `grep -i -v -c -n -w -o -E -r -l` | Find lines that match a pattern or regular expression |
-| `cut`, `sort`, `uniq` | Pick columns, sort lines (`-n`, `-r`, `-k`), count duplicates |
-| `$?`, `&&`, <code>&#124;&#124;</code> | Exit status, "then", "otherwise" |
-| `$var`, `$(cmd)`, `for`, `if` | Variables, command output, loops, tests |
-| `PATH`, `export`, `alias`, `source` | Where programs are found, settings, shortcuts, reload |
-| `ps`, `htop`, `top`, `free`, `nproc` | See running processes, memory and cores |
-| `&`, `jobs`, `fg`, `bg`, `kill`, `nohup` | Background, list, foreground, stop, survive logout |
-| `man`, `--help` | Get help |
-
-### Regular expression building blocks
-
-| Pattern | Matches |
-|---------|---------|
-| `.` `*` `+` `?` | any one character; repeat 0+, 1+, 0 or 1 times |
-| `^` `$` | start of line, end of line |
-| `[abc]` `[0-9]` `[^,]` | one of a set, one of a range, one NOT in the set |
-| `{3}` `{2,5}` | repeat exactly 3 times, 2 to 5 times |
-| <code>(a&#124;b)</code> | a group with alternatives |
-| `\.` | a literal special character |
-
-## Check yourself
-
-These are the kinds of questions you should be able to answer on an exam, without a computer or AI.
-
-1. What's the difference between an absolute and a relative path? Give an example of each.
-2. You're in `~/bigdata/lec01`. What does `cd ../..` do?
-3. What's the difference between `>` and `>>`?
-4. You opened a file in `vi` and typed text you don't want to keep. How do you get out without saving?
-5. Why is `head` instant on a 10 GB file while `cat` is not?
-6. What does `cut -d, -f3 covid.csv | sort | uniq -c` produce?
-7. Your laptop's fan is suddenly loud. How do you find out which process is responsible, and how do you stop it?
-8. Why is `rm -r *` dangerous?
-9. `ls /nonexistent > out.txt` still prints an error. Why? Write a command that puts the normal output in `out.txt` and the errors in `err.txt`.
-10. What is the difference between `2>&1 > all.txt` and `> all.txt 2>&1`?
-11. What does `grep -v '^#' file` print? What does `grep -c '^$' file` count?
-12. Write a `grep` that matches lines of `covid.csv` whose *state* is Ohio (and not a county named Ohio). Why doesn't `grep ",Ohio,"` do it?
-13. What does `printf '10\n9\n100\n' | sort` print? How do you get numeric order?
-14. Write a pipeline that prints the ten most common county names in `covid.csv`.
-15. Why is `uniq` almost always used after `sort`?
-16. `cut -d, -f2` on the line `"Smith, John",Boston` gives ` John"`. Why?
-17. What is the difference between `cmd1; cmd2`, `cmd1 && cmd2` and `cmd1 || cmd2`?
-18. You wrote `report.sh` and ran `report.sh`. You get "command not found". Give two ways to run it.
-19. What do `$1`, `$#` and `$?` mean?
-20. How is a job started with `&` different from one started with `nohup`?
-
-## Before next class
-
-- Make sure your terminal works: Ubuntu in WSL on Windows, or Terminal on a Mac.
-- Install `htop` and `git` if you don't have them.
-- Do 15 minutes of `vimtutor`.
-- Do the "Try it" exercises in the grep, sorting and scripting sections.
