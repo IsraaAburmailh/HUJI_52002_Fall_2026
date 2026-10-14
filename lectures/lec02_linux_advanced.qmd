@@ -10,13 +10,21 @@ format:
     embed-resources: true
 ---
 
+Let's make a scratch folder and setup:
+
+```bash
+mkdir -p ~/workspace/HUJI_52002_Fall_2026/scratch/lec02
+cd ~/workspace/HUJI_52002_Fall_2026/scratch/lec02
+cp ../lec01/covid.csv . #what does this do?
+ls -alh
+```
 
 ## Finding and stopping a process
 
 `tail -f` keeps showing new lines as they are added to a file, which is how you watch a log of a long-running job. To try it, open a second terminal and run the first line, which adds the date to `logfile.txt` every second. Then, in the first terminal, run the second line. Press Ctrl+C in both when done.
 
 ```bash
-cd ~/workspace/HUJI_52002_Fall_2026/scratch/lec01    # terminal 2
+cd ~/workspace/HUJI_52002_Fall_2026/scratch/lec02 # terminal 2
 while true; do date >> logfile.txt; sleep 1; done    # terminal 2
 tail -f logfile.txt                                  # terminal 1 .... then CTRL+C...
 ```
@@ -53,7 +61,7 @@ For the columns not self explanatory:
 - `TTY` is the terminal ID the process is connected to
 - `STAT` is status (where S+ means sleeping)
 
-**Why did we search for `sleep` and not for `while`?** There is no program called `while`. The loop is part of the bash language, so it is run by the shell itself, the `bash` in terminal 2. What you can see is the command in the loop's children: every second it executes `sleep 1`.
+**Why did we search for `sleep` and not for `while`?** There is no program called `while`. The loop is part of the bash language, so it is run by `bash` in terminal 2. What you can see is the command in the loop's children: every second it executes `sleep 1`.
 
 To watch processes live instead, use `htop`, and press `q` to quit:
 
@@ -101,26 +109,30 @@ ps aux | grep sleep
 
 Our loop teaches two lessons about this:
 
-- Stop the parent, not the child.
-- Interactive shells ignore the polite request. `kill 4702` on the shell in terminal 2 appears to do nothing, because an interactive shell ignores SIGTERM. `kill -9 4702` works, but it ends the shell itself, and terminal 2 usually closes. The normal way to stop a loop is **Ctrl+C in its own terminal**, which sends the process a different signal, SIGINT (number 2).
+- Stopping the parent process is more failsafe.
+- Interactive shells ignore the polite request. `kill 4702` on the shell in terminal 2 appears to do nothing, because an interactive shell ignores SIGTERM. `kill -9 4702` works, but it ends the shell itself, and terminal 2 closes. The normal way to stop a loop is **Ctrl+C in its own terminal**, which sends the process a different signal, SIGINT (number 2).
 
 ## Columns, sorting and counting
 
 `cut` picks columns, `sort` orders lines, and `uniq` collapses repeated lines. They are the backbone of command-line data analysis:
 
 ```bash
+echo "alias csv_cols='column -s, -t'" >> ~/.bashrc               # a shortcut: ll
+source ~/.bashrc                    # read the file now, instead of reopening
+#my bashrc moves me to another folder - you won't need the following
+cd ~/workspace/HUJI_52002_Fall_2026/scratch/lec02
 #date,county,state,fips,cases,deaths
-cut -d, -f1,3 covid.csv | head -n 10     # columns 1 and 3
-cut -d, -f1,3  covid.csv | head -n 10 | sort -r     # columns 1 and 3 most recent first
-cut -d, -f1,3  covid.csv | sort -r | head -n 10     # why is this slower?
-cut -d, -f1,3 covid.csv | head -n 10     # columns 1 and 3 most recent first
-cut -d, -f2-4 covid.csv | head -n 4     # columns 2 through 4
-cut -d, -f2-4 covid.csv | head -n 4 | uniq    #same output just pruned to unique rows
-cut -d, -f2-4 covid.csv | head -n 4 | uniq -c #counts the unique rows
-cut -d, -f4- covid.csv | head -n 4      # column 4 to the end
-cut -c1-7 covid.csv | head -n 4         # characters 1-7: not columns at all (the seven charas YYYY-MM in this case)
-cut -c1-7 covid.csv | uniq -c   # number of cases per month, most recent first
-cut -c1-7 covid.csv | uniq -c | sort -nr   # sorted as a number (not text), largest first
+cut -d, -f1,3 covid.csv | head -n 10 | csv_cols     # columns 1 and 3
+cut -d, -f1,3 covid.csv | head -n 10 | sort -r | csv_cols     # columns 1 and 3 most recent first
+cut -d, -f1,3 covid.csv | sort -r | head -n 10 | csv_cols     # why is this slower?
+cut -d, -f1,3 covid.csv | head -n 10 | csv_cols     # columns 1 and 3 most recent first
+cut -d, -f2-4 covid.csv | head -n 4 | csv_cols     # columns 2 through 4
+cut -d, -f2-4 covid.csv | head -n 4 | uniq | csv_cols    #same output just pruned to unique rows
+cut -d, -f2-4 covid.csv | head -n 4 | uniq -c | csv_cols #counts the unique rows
+cut -d, -f4-  covid.csv | head -n 4 | csv_cols     # column 4 to the end
+cut -c1-7     covid.csv | head -n 4 | csv_cols         # characters 1-7: not columns at all (the seven charas YYYY-MM in this case)
+cut -c1-7     covid.csv | uniq -c | csv_cols   # number of cases per month, most recent first
+cut -c1-7     covid.csv | uniq -c | sort -nr | csv_cols   # sorted as a number (not text), largest first
 ```
 
 ::: {.callout-warning}
@@ -169,7 +181,7 @@ The pattern `sort | uniq -c | sort -rn | head` is a useful idiom: *count how oft
 Recall that every command ends with an exit status: 0 for success, anything else for failure. The shell can chain commands based on it:
 
 ```bash
-echo a; echo b                    # ; runs both, whatever happens
+echo a; echo b                    # ; runs both regardless of failures
 mkdir results && cd results       # && : second only if the first worked
 pwd
 cd ..
@@ -180,7 +192,7 @@ grep -q "Atlantis" covid.csv || echo "not there"
 ```
 
 
-# Processes
+# Background job administration
 
 We already met `ps`, `htop` and `kill` for finding and stopping a process (in "Finding and stopping a process" above). Here we look at how big the machine is, and at running things in the background.
 
@@ -197,38 +209,112 @@ uptime                # how long it has been up, and the recent load average
 `yes` is a standard linux command. It prints "y" as fast as it can, using 100% of one CPU core
 
 ```bash
-yes > /dev/null &     # a useless program that uses 100% of one core
+echo "yes > /dev/null" > useless_cpu_eating_program.sh # a useless program that uses 100% of one core
+chmod +x useless_cpu_eating_program.sh
+ls -alh
+./useless_cpu_eating_program.sh #CTRL+C to quit
 ```
 
-The `&` runs it in the **background**, so you get your prompt back. Now manage it:
+The `&` runs it in the **background**, so you get your prompt back. 
 
 ```bash
-jobs                  # list background jobs in this terminal
-kill %1               # or: stop background job number 1
+./useless_cpu_eating_program.sh & #prints out the PID of the background job  
+htop #ensure it's running
+```
+
+Now manage it:
+
+```bash
+jobs                  # list background jobs in this terminal only
+#open up terminal 2
+jobs #no jobs
+kill %1               # or: stop background job number 1 or kill 2855414 by PID
+jobs #no jobs
 ```
 
 Another possibility:
 
 ```bash
-yes > /dev/null &     # a useless program that uses 100% of one core
-fg                    # bring it back to the foreground; Ctrl+C then stops it
+./useless_cpu_eating_program.sh &
+fg                    # bring it back to the foreground (only in this terminal); Ctrl+C then stops it
+jobs #no jobs
 ```
 
-
-A job started with `&` belongs to your terminal window and stops when you close it. For something long, like a model fit on a remote server, use `nohup` ("no hang-up"), which keeps it alive after you log out. It uses the redirections from earlier to save the output:
+Multiple background jobs administration:
 
 ```bash
-nohup python3 long_job.py > out.log 2>&1 &    # survives logging out and 2>&1 ensures errors are logged into out.log as well
-tail -f out.log                               # check on it whenever you like
+./useless_cpu_eating_program.sh &
+./useless_cpu_eating_program.sh &
+./useless_cpu_eating_program.sh &
+fg %2 #bring second one to forefront
+jobs
+jobs -p
 ```
 
-**Demo: watch a process use memory.** With `htop` open, and `free -h` run before, during and after, run:
+Can we pipe that output into the `kill` function? Yes, you but you have to ensure they're piped in as arguments. That's what `xargs` (execute each with these arguments) does, takes output and runs each output as an argument to its passed function:
 
 ```bash
-python3 -c "x = 'a' * 10**9; input('Press Enter to quit')"
+jobs -p | xargs kill #runs kill pid1; kill pid2; kill pid3; ... and can be parallelized
+jobs
+rm 
 ```
 
-Watch the memory bar jump by about 1 GB (the `used` column of `free -h` does too). Press Enter and watch it drop. This is what "fits in RAM" means in practice.
+The `xargs` function is pretty useful as it turns pipe output into executable code. It is frequently used with `-P $(nproc)` which tells linux to do all the jobs in parallel using a threadpool with number of threads equal to the number of cores on the machine for near optimal speed. You'll see this on the homework.
+
+Back to background jobs... A background job started with `&` belongs to your terminal window and stops when you close your terminal. For a long job run on a remote server (we will be using remote servers as soon as I get them set up for you guys), this is completely unacceptable. What if you were processing a large amount of data on a remote supercomputer and your wifi went out? Your job is cooked.
+
+Solution #1: use `nohup` ("no hang-up"), which keeps it alive after you log out. Let's go back to our infinite loop program:
+
+```bash
+echo "while true; do date; sleep 1; done" > "infinite_loop.sh"
+chmod +x infinite_loop.sh
+ls -alh
+```
+
+On a critical job, you also want to log output and errors. So we will use the redirections from earlier to save the output.
+
+```bash
+nohup ./infinite_loop.sh > out.log 2>&1 &    # survives logging out and 2>&1 ensures errors are also logged
+tail -f out.log                               # check on the program's output whenever you like
+#now let's open another terminal and set to working directory
+cd ~/workspace/HUJI_52002_Fall_2026/scratch/lec02
+jobs #it's not here because jobs only accesses jobs as part of a terminal
+ps -aux | grep "[i]nfinite" #our inifinite loop job is running. tangent: why i in bracket? I'll try to put it on the homework
+#now let's close the first terminal (where we started the job)
+tail -f out.log #our inifinite loop job is still going
+#the demo is over, cleanup after ourselves
+kill 2874105 
+rm out.log
+```
+
+`nohup` keeps one command alive after you log out. `tmux` ("terminal multiplexer") keeps a whole *terminal* alive: you start a session on the server, begin your work, **detach**, and log out. The session keeps running, and when you log in again later you **attach** and find everything as you left it, including every customization you made.
+
+```bash
+tmux new -s my_infinite_job_terminal # start a session
+#note the bar at the bottom indicating you are using a terminal within a terminal
+#set to working directory
+cd ~/workspace/HUJI_52002_Fall_2026/scratch/lec02
+./infinite_loop.sh > out.log 2>&1 &  # start the job
+                                     # now press Ctrl+B, release the terminal entering
+                                     # into command mode, then press "d" to detach and
+                                     # return to the home terminal
+#you can now close the terminal / logout of the remote machine
+#now open a new terminal / login to the remote machine
+tmux ls                                       # (later) list your sessions
+tmux attach -t my_infinite_job_terminal       # come back: the job is still running
+tmux kill-session -t my_infinite_job_terminal # delete the session when the job is done
+tmux ls                                       # this session is gone
+```
+
+Every `tmux` key combination starts with the **prefix**, Ctrl+B, followed by one more key:
+
+| Keys | What it does |
+|------|--------------|
+| Ctrl+B, then d | detach (leave the session running) |
+| Ctrl+B, then c | create a new tabbed terminal inside the session |
+| Ctrl+B, then n / p | go to the next / previous tabbed terminal |
+
+`screen` is an older program that does the same thing, and you will still meet it on old servers. A good rule of thumb: use `nohup ... &` for a lightweight one fire-and-forget command, and `tmux` when you want to come back to a whole terminal and look at it or work in it.
 
 
 # Reshaping text: `awk`, `sed`, `tr` and `jq`
@@ -237,7 +323,7 @@ Watch the memory bar jump by about 1 GB (the `used` column of `free -h` does too
 
 ## `awk`: column-aware processing
 
-`awk` reads its input one line at a time and splits every line into fields. `$1` is the first field, `$3` the third, `$0` the whole line, `NF` the number of fields and `NR` the line number. A program has the form `condition {action}`: for every line that meets the condition, do the action. With no condition the action runs on every line, and with no action matching lines are printed.
+`awk` (acronym of the three authors) reads its input one line at a time and splits every line into fields. `$1` is the first field, `$3` the third, `$0` the whole line, `NF` the number of fields and `NR` the line number. A program has the form `condition {action}`: for every line that meets the condition, do the action. With no condition the action runs on every line, and with no action matching lines are printed.
 
 ```bash
 awk -F, '{print $3, $1}' covid.csv | head -n 3   # -F, : split at commas
@@ -456,29 +542,4 @@ rsync -avn data/ user@server:~/data/    # -n : dry run, only show the plan
 
 ## `tmux`: a terminal that survives disconnects
 
-`nohup` keeps one command alive after you log out. `tmux` ("terminal multiplexer") keeps a whole *terminal* alive: you start a session on the server, begin your work, **detach**, and log out. The session keeps running, and when you log in again later you **attach** and find everything as you left it, including a long job's live output.
 
-```bash
-tmux new -s job            # start a session named job
-python3 long_job.py        # start the long job
-                           # now press Ctrl+B, release, then D: detach
-tmux ls                    # (later) list your sessions
-tmux attach -t job         # come back: the job is still running
-tmux kill-session -t job   # delete the session when you are done
-```
-
-Every `tmux` key combination starts with the **prefix**, Ctrl+B, followed by one more key:
-
-| Keys | What it does |
-|------|--------------|
-| Ctrl+B, then D | detach (leave the session running) |
-| Ctrl+B, then C | create a new window inside the session |
-| Ctrl+B, then N / P | go to the next / previous window |
-| Ctrl+B, then [ | scroll back through the output (`q` to leave) |
-
-`screen` is an older program that does the same thing, and you will still meet it on old servers. A good rule of thumb: use `nohup ... &` for one fire-and-forget command, and `tmux` when you want to come back to a terminal and look at it or work in it.
-
-::: {.callout-tip}
-## Try it
-No server needed for the `tmux` part: run `tmux new -s demo`, start `yes > /dev/null` (it uses a CPU core), detach with Ctrl+B then D, and check that `tmux ls` still shows the session and `htop` still shows `yes` running. Re-attach with `tmux attach -t demo`, press Ctrl+C to stop the `yes`, and type `exit` to end the session.
-:::

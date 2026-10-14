@@ -10,17 +10,18 @@ There are heavy tech requirements for this class. I have tried to make a complet
 
 None released yet
 <!-- 
-* [Lab 11, due Oct 17 23:59](https://github.com/kapelner/HUJI_52002_Fall_2026/blob/master/labs/lab11.Rmd) pushed to your github repo 
-* [Lab 10, due Oct 17 23:59](https://github.com/kapelner/HUJI_52002_Fall_2026/blob/master/labs/lab10.Rmd) pushed to your github repo
-* [Lab 9, due Oct 17 23:59](https://github.com/kapelner/HUJI_52002_Fall_2026/blob/master/labs/lab09.Rmd) pushed to your github repo
-* [Lab 8, due Oct 17 23:59](https://github.com/kapelner/HUJI_52002_Fall_2026/blob/master/labs/lab08.Rmd) pushed to your github repo
-* [Lab 7, due Oct 17 23:59](https://github.com/kapelner/HUJI_52002_Fall_2026/blob/master/labs/lab07.Rmd) pushed to your github repo
-* [Lab 6, due Oct 17 23:59](https://github.com/kapelner/HUJI_52002_Fall_2026/blob/master/labs/lab06.Rmd) pushed to your github repo
-* [Lab 5, due Oct 17 23:59](https://github.com/kapelner/HUJI_52002_Fall_2026/blob/master/labs/lab05.Rmd) pushed to your github repo
-* [Lab 4, due Oct 17 23:59](https://github.com/kapelner/HUJI_52002_Fall_2026/blob/master/labs/lab04.Rmd) pushed to your github repo
-* [Lab 3, due Oct 17 23:59](https://github.com/kapelner/HUJI_52002_Fall_2026/blob/master/labs/lab03.Rmd) pushed to your github repo
-* [Lab 2, due Oct 17 23:59](https://github.com/kapelner/HUJI_52002_Fall_2026/blob/master/labs/lab02.Rmd) pushed to your github repo
-* [Lab 1, due Oct 17 23:59](https://github.com/kapelner/HUJI_52002_Fall_2026/blob/master/labs/lab01.Rmd) pushed to your github repo-->
+* [Lab 12, due Oct 17 23:59](https://github.com/kapelner/HUJI_52002_Fall_2026/blob/master/labs/lab11.qmd) pushed to your github repo 
+* [Lab 11, due Oct 17 23:59](https://github.com/kapelner/HUJI_52002_Fall_2026/blob/master/labs/lab11.qmd) pushed to your github repo 
+* [Lab 10, due Oct 17 23:59](https://github.com/kapelner/HUJI_52002_Fall_2026/blob/master/labs/lab10.qmd) pushed to your github repo
+* [Lab 9, due Oct 17 23:59](https://github.com/kapelner/HUJI_52002_Fall_2026/blob/master/labs/lab09.qmd) pushed to your github repo
+* [Lab 8, due Oct 17 23:59](https://github.com/kapelner/HUJI_52002_Fall_2026/blob/master/labs/lab08.qmd) pushed to your github repo
+* [Lab 7, due Oct 17 23:59](https://github.com/kapelner/HUJI_52002_Fall_2026/blob/master/labs/lab07.qmd) pushed to your github repo
+* [Lab 6, due Oct 17 23:59](https://github.com/kapelner/HUJI_52002_Fall_2026/blob/master/labs/lab06.qmd) pushed to your github repo
+* [Lab 5, due Oct 17 23:59](https://github.com/kapelner/HUJI_52002_Fall_2026/blob/master/labs/lab05.qmd) pushed to your github repo
+* [Lab 4, due Oct 17 23:59](https://github.com/kapelner/HUJI_52002_Fall_2026/blob/master/labs/lab04.qmd) pushed to your github repo
+* [Lab 3, due Oct 17 23:59](https://github.com/kapelner/HUJI_52002_Fall_2026/blob/master/labs/lab03.qmd) pushed to your github repo
+* [Lab 2, due Oct 17 23:59](https://github.com/kapelner/HUJI_52002_Fall_2026/blob/master/labs/lab02.qmd) pushed to your github repo-->
+* [Lab 1, due Oct 21 23:59](https://github.com/kapelner/HUJI_52002_Fall_2026/blob/master/labs/lab01.qmd) pushed to your github repo
 
 
 ## Theory Homeworks

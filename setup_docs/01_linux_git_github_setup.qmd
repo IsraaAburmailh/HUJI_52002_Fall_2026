@@ -206,7 +206,7 @@ Congrats you're now al set up! There are many great resources about git you can 
 
 # How to Upload your Homework Assignments
 
-Since you are setting this up at the beginning of the semester, I will use lab 1 as the canonical example. First, go to lab 1 on the course homepage via navigating your browser to <https://github.com/kapelner/HUJI_52002_Fall_2026/blob/main/labs/lab01.qmd> and then download the lab using the "download raw file" icon. Now move this downloaded file "lab01.Rmd" into your HUJI_52002_Fall_2026/labs folder via something like
+Since you are setting this up at the beginning of the semester, I will use lab 1 as the canonical example. First, after lab 1 is released on the homepage (you'll see it under the "Labs" section with a due date), go to lab 1 on the course homepage via navigating your browser to <https://github.com/kapelner/HUJI_52002_Fall_2026/blob/main/labs/lab01.qmd> and then download the lab using the "download raw file" icon. Now move this downloaded file "lab01.Rmd" into your HUJI_52002_Fall_2026/labs folder via something like
 
 ```bash
 mv ~/Downloads/lab01.qmd ~/workspace/HUJI_52002_Fall_2026/labs/lab01.qmd

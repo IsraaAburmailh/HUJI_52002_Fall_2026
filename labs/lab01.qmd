@@ -1,0 +1,608 @@
+---
+title: "Lab 1: Basic nix"
+subtitle: "Big Data Algorithms"
+author: "YOUR NAME HERE"
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    number-sections: false
+    code-copy: true
+    embed-resources: true
+execute:
+  eval: false
+---
+
+This lab has exercises that reinforce what we learned in Lecture 1 (`lectures/lec01_linux_shell_basics.qmd`). Everything is done at the **terminal** (not by clicking in a file browser). The lab is graded proportionally out 100.
+
+::: {.callout-warning}
+## Ground rules
+* Run every command yourself. Many answers depend on what you see on your own machine.
+* When a question says "predict", write your prediction *before* you run the command. You are graded on the reasoning, not on guessing right.
+* `rm` has no undo. Before you delete anything, `ls` the pattern first, and check `pwd` to see where you are.
+* **Mac users:** almost everything is identical. A few GNU/Linux options do not exist in the Mac's BSD versions of the commands (the lecture lists a few). If an option fails on your Mac, say so in your answer and use the closest alternative.
+* You should use `man <command>` (and `<command> --help`) all through this lab. Being able to understand linux documentation is a critical skill being tested.
+:::
+
+# Part 0: Setup
+
+I'm assuming your private github repository for this class (as set up in `setup/01_linux_git_github_setup.qmd`) is in the following location. If not, please edit the location below:
+
+```bash
+export my_52002_repo="$HOME/workspace/HUJI_52002_Fall_2026"
+```
+
+Every time you open a new terminal you need to run this. Best to put it inside your `.bashrc` so you will always have access to this variable.
+
+```bash
+#TODO [command to add to .bashrc <1pt>]
+```
+
+Create a directory for this assignment.
+
+```bash
+mkdir -p $my_52002_repo/labs/01/
+```
+
+Download this file and move it into the folder `$my_52002_repo/labs/01/`. You will edit this file filling in the brackets after the "#TODO"'s. 
+
+You should commit / push after chunks of work (it's a great way to do a backup in case your dog eats your computer). You can do the final push when you're done and the final timestamp on github will be your submission date. Don't edit this file after that, we will be forced to mark your assignment late if you by accident push it.
+
+This assignment will require many temporary files. All of these files go in a scratch folder inside your repository which mirrors the scratch folder we used in the lecture. Work done there is never graded or committed, so before anything else we tell git to ignore it.
+
+Create the scratch folder and move into it:
+
+```bash
+mkdir -p $my_52002_repo/labs/01/scratch
+cd $my_52002_repo/labs/01/scratch
+echo $HOME
+```
+
+Let's do a directory exercise testing your understanding of the exported path.
+
+#TODO `pwd` should return [what should `pwd` return? Try to answer without running it. <1pt>] 
+#TODO [why does `pwd` return this? <1pt>]
+
+We will call this directory the "working directory" going forward. Try to stay inside this directory!
+
+Make git ignore the `scratch` subfolder by adding it to your repository's `.gitignore` file. The setup guide asked you to do this once already, so first check whether it is there, and only add it when it is missing.
+
+#TODO I added to `.gitignore` the following line: `[line <1pt>]`. 
+
+Download the covid data (the same `curl` command as in the lecture):
+
+```bash
+curl -L -o covid.csv https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties-2020.csv
+```
+
+Verify the file is there and it has the correct size (in human readable format) 
+
+```bash
+#TODO [command <1pt>]
+```
+
+```
+[output of the command above <1pt>]
+```
+
+Then run `git status` from your repository and ensure the downloaded file does not appear as a new file. `git status` will  list `.gitignore` itself as modified, which is fine: as `.gitignore` *is* itself committed. If the file does appear, your `.gitignore` edit is not working.
+
+# Part 1: Navigating and managing files
+
+Create the folders `project/data`, `project/scripts` and `project/results` with one command (not merely one line separated with ;'s).
+
+```bash
+#TODO [command <1pt>]
+```
+
+`touch`, `cp` and `mv` look simple, but each can surprise you. Starting in `labs/01/scratch`, put some content into the folders you just made:
+
+```bash
+echo "id,value"   > project/data/a.csv
+echo "1,42"       > project/data/b.csv
+echo "echo hello" > project/scripts/run.sh
+```
+
+Let's examine `touch` on a file that already exists:
+
+```bash
+ls -l --full-time project/data/a.csv    # Mac: ls -lT project/data/a.csv
+touch project/data/a.csv
+ls -l --full-time project/data/a.csv
+cat project/data/a.csv
+```
+
+#TODO [what does `touch` change about `a.csv`, and what does it leave alone? <1pt>]
+
+Let's examine copying onto a file that already exists:
+
+```bash
+cp project/data/a.csv project/data/b.csv
+cat project/data/b.csv
+```
+
+#TODO [what does `b.csv` contain afterward? Does `cp` warn you? <1pt>]
+#TODO [which `cp` option could've saved the day here? <1pt>]
+
+Let's examine moving versus copying. `ls -i` prints a file's *inode number*, the number the filesystem uses to identify the file itself, independent of its name.
+
+```bash
+ls -i project/data/a.csv
+mv project/data/a.csv project/results
+ls -i project/results/a.csv
+cp project/results/a.csv project/data/a.csv
+ls -i project/data/a.csv
+```
+
+#TODO [which of the three inode numbers are equal? <1pt>]
+#TODO [why does `mv` keep the inode number but `cp` gives a new one? <2pts>] 
+#TODO [based on the previous answer, which would be faster on a 10 GB file on the same disk, and why? <1pt>]
+
+Let's examine moving more:
+
+```bash
+mv project/scripts/run.sh project/bin
+ls -l project
+mv project/data/b.csv project/old/
+```
+
+#TODO [after the first line, is `project/bin` a file or a folder? What happens on the third line? <1pt>]
+#TODO [how can you tell from `ls -l` whether `bin` is a file or a folder? <1pt>]
+#TODO [why did the third line fail when the first one did not, and why is ending a destination folder with `/` a good habit? <2pts>]
+
+Let's examine copying several files at once:
+
+```bash
+cp project/data/a.csv project/data/b.csv project/results
+ls project/results
+cp project/data/a.csv project/data/b.csv project/bin
+```
+
+#TODO [what happens when you give n arguments to `cp`? <1pt>]
+
+Copying a folder, twice:
+
+```bash
+cp -r project project_backup
+ls project_backup
+cp -r project project_backup
+ls project_backup
+```
+
+#TODO [why did the second `cp -r` give a different result than the first? <2pts>]
+
+
+
+
+# Part 2: Wildcards and `find`
+
+
+Write **one** command that lists *all* items in `labs/01/scratch` (including those in subdirectories and hidden items).
+
+```bash
+#TODO [command <1pt>]
+```
+
+
+We would like to repeat this but now also print the permissions and the size and datetime of last modification for each. Try the following:
+
+```bash
+find . -mindepth 1 | ls
+```
+
+#TODO [explain why this didn't work as planned <2pts>]
+
+Set up a small practice folder:
+
+```bash
+mkdir -p $my_52002_repo/labs/01/scratch/wild
+cd $my_52002_repo/labs/01/scratch/wild
+touch report_2019.txt report_2020.txt report_2021.csv notes.md .hidden
+touch data_1.csv data_2.csv data_10.csv
+```
+
+Write **one** `ls` command, using wildcards, for each goal:
+
+* (a) every `.csv` file
+* (b) the `data` files whose number has exactly one digit
+* (c) the `report` files from 2020 or 2021
+* (d) the `data` files whose number does *not* start with 1.
+* (e) everything in the folder *including* the hidden file.
+
+```bash
+#TODO [command (a) <1pt>]
+#TODO [command (b) <1pt>]
+#TODO [command (c) <1pt>]
+#TODO [command (d) <1pt>]
+#TODO [command (e) <1pt>]
+```
+
+Starting from `labs/01/scratch`, write a `find` command for each of these. The first argument is where to look.
+
+* (a) every `.csv` file anywhere under `labs/01/scratch`
+* (b) files bigger than 10 MB under `labs/01/scratch` (which file do you expect?)
+* (c) empty files (and folders) in `labs/01/scratch/wild`
+* (d) regular files in `labs/01/scratch/wild` whose name does *not* end in `.csv`
+* (e) files in `labs/01/scratch/wild` that end in `.csv` *or* `.md`
+* (f) files under `labs/01/scratch` modified in the last 60 minutes
+* (g) run `wc -c` on every `.csv` file in `labs/01/scratch/wild` using `-exec ... {} \;` (the `{}` stands for the file name)
+
+```bash
+#TODO [command (a) <1pt>]
+#TODO [command (b) <1pt>]
+#TODO [command (c) <1pt>]
+#TODO [command (d) <1pt>]
+#TODO [command (e) <1pt>]
+#TODO [command (f) <1pt>]
+#TODO [command (g) <2pts>]
+```
+
+#TODO [(b) which file do you expect? <1pt>]
+
+# Part 3: Redirects and streams
+
+```bash
+cd $my_52002_repo/labs/01/scratch
+echo "a" > f.txt
+echo "b" >> f.txt
+echo "c" > f.txt
+echo "d" >> f.txt
+cat f.txt
+wc -l f.txt
+```
+
+#TODO [without running the commands, your prediction of what `cat f.txt` prints and what `wc -l f.txt` says and why <2pts>]
+
+The command `ls . /nonexistent` writes to both stdout and stderr (the listing and an error). Write a command for each goal:
+
+* (a) the normal output goes to `out.txt`, the error still appears on the screen
+* (b) only the error goes to `err.txt`
+* (c) the normal output goes to `out.txt` *and* the error goes to `err.txt`
+* (d) both go to the same file `all.txt`
+
+```bash
+#TODO [command (a) <1pt>]
+#TODO [command (b) <1pt>]
+#TODO [command (c) <1pt>]
+#TODO [command (d) <1pt>]
+```
+
+Now run these two lines and look carefully at what appears on the screen and what is in `a.txt` and `b.txt`:
+
+```bash
+ls . /nonexistent 2>&1 > b.txt
+```
+
+#TODO [why does the order of `> a.txt` and `2>&1` matter? <2pts>]
+
+Run `find /etc -name "*.conf" 2>/dev/null > conf_list.txt` 
+
+```
+#TODO: [one command that counts the number of files find returned <1pt>]
+```
+
+#TODO [without `2>/dev/null`, would the "Permission denied" messages end up inside `conf_list.txt`? Explain. <1pt>]
+
+Create `prime_ministers.txt` with three names of your choosing, one per line, in one command:
+
+```bash
+#TODO [command <1pt>]
+```
+
+Now try this on a *copy* of the file (never on your only copy):
+
+```bash
+cp prime_ministers.txt p2.txt
+cat p2.txt > p2.txt
+cat p2.txt
+```
+
+#TODO [what happened to `p2.txt`, and why? <2pts>]
+
+# Part 4: Shell scripts and exit status
+
+Run 
+
+```bash
+grep -c Atlantis covid.csv
+``` 
+
+#TODO Its exit status is [exit status <1pt>]
+#TODO [Explain why what it printed is not the same as what its exit status is. <1pt>]
+
+Write a script `state_report.sh` that is called as
+
+```
+./state_report.sh FILE STATE
+```
+
+and behaves like this:
+
+* The first line is the shebang `#!/usr/bin/env bash`.
+* If it receives fewer than 2 arguments, it prints `usage: ./state_report.sh FILE STATE` to **stderr** (not stdout) and exits with status 1.
+* If `FILE` is not an existing regular file, it prints an error message to stderr and exits with status 2.
+* Otherwise it prints `STATE has N rows in FILE`, for example `Texas has 67002 rows in covid.csv`, where N is the number of rows in which **STATE is the state column** (not just any row that mentions the word; reuse the `[^,]*` idiom from the lecture).
+* Put double quotes around variables (`"$file"`).
+
+Create it with `vi` or `nano`, and paste the finished script here. Remember the shebang line.
+
+```bash
+#TODO [your script <6pts>]
+```
+
+Run it as shown, and paste the output of each. After the failing runs, show `echo $?`:
+
+```bash
+bash state_report.sh covid.csv Texas
+bash state_report.sh covid.csv
+bash state_report.sh nope.csv Utah
+```
+
+```
+[output of the three runs above and their exit status <1pt>]
+```
+
+Finally, use a `for` loop at the prompt to run your script for Texas, Ohio and Utah, in one command:
+
+```bash
+#TODO [your for loop <1pt>]
+```
+
+```
+[output of the loop <1pt>]
+```
+
+Write code below that moves your script to `~/bin` and allows it to be callable from any directory even after you restart your machine. Verify with a `which` command to ensure it is running from `~/bin`.
+
+```bash
+#TODO [commands <2pts>]
+```
+
+This script has three bugs. Create it, run it, find the bugs from the error messages (and from the output that is wrong without any error message), and paste your fixed version:
+
+```bash
+cat > broken.sh << 'EOF'
+#!/usr/bin/env bash
+name = "Ada"
+if [-f covid.csv]; then
+  echo "found $name"
+fi
+echo 'Today is $(date +%F)'
+EOF
+```
+
+```bash
+#TODO [your fixed version of broken.sh <1pt>]
+```
+
+#TODO [bug 1 <1pt>]
+#TODO [bug 2 <1pt>]
+#TODO [bug 3 <1pt>]
+
+# Part 5: Permissions, the root user and `PATH`
+
+For each permission string, say in words who can do what, and give the numeric mode (the three-digit `chmod` number; the lecture mentions `600` and `777`; read `man chmod` for the rule):
+
+| String | A non owner, non root user can ... | Numeric mode |
+|---|---|---|
+| `-rwxr-x---` | [ <1pt>] | [ <1pt>] |
+| `-r--r--r--` | [ <1pt>] | [ <1pt>] |
+| `-rwx------` | [ <1pt>] | [ <1pt>] |
+| `drw-r--r--` | [ <1pt>] | [ <1pt>] |
+
+
+Run the following lines one-by-one then answer the questions below. As always, write your prediction for each lettered line *before* you run it.
+
+```bash
+cd $my_52002_repo/labs/01/scratch
+echo "secret" > z.txt
+chmod 000 z.txt
+ls -l z.txt
+cat z.txt                  # (a)
+chmod u+r z.txt
+ls -l z.txt
+cat z.txt                  # (b)
+chmod 750 z.txt
+ls -l z.txt                # (c)
+chmod u=rwx,g=rx,o= z.txt  # (d)
+ls -l z.txt
+
+mkdir d && echo "hi" > d/f.txt
+chmod -x d
+ls -l z.txt
+cat d/f.txt                # (e)
+chmod +x d
+chmod -r d
+ls -l z.txt
+ls d                       # (f)
+cat d/f.txt                # (g)
+```
+
+#TODO [(a) what happened and why? <1pt>]
+#TODO [(b) what happened and why? <1pt>]
+#TODO [(c) How does each digit of `750` turns into three of the `rwx` letters? <1pt>]
+#TODO [(d) Did the second `ls -l` show anything different from (c)? Why? <1pt>]
+#TODO [Write the symbolic `chmod` (like the one in (d)) that would give mode `644`. <1pt>]
+#TODO [(e) what happened? Run `ls -ld d`: which string in the table above does `d` now match? Why does `cat` fail even though `f.txt` itself still has read permission? <2pts>]
+#TODO [(f) what happened, and what is the error message? <1pt>]
+#TODO [(g) did it work? How can you read a file inside a folder you are not allowed to list, and what do you need to know in advance to do it? <2pts>]
+
+Try `echo "# test" >> /etc/hosts`
+
+#TODO [why should this fail? <1pt>]
+#TODO [why can't you simply `chmod +w` so you can edit it? <1pt>]
+
+
+# Part 6: Editing with `vi`
+
+Create a practice file:
+
+```bash
+cd $my_52002_repo/labs/01/scratch
+cat > poem.txt << 'EOF'
+line 1
+line 2
+line 3
+line 4
+line 5
+line 6
+line 7
+line 8
+EOF
+```
+
+Open it with `vi poem.txt` and do **only** these steps, in this order, without using the mouse or the arrow keys:
+
+1. Turn on line numbers.
+2. Go to line 5.
+3. Delete line 5, and then delete line 6 (a second delete).
+4. Undo the **last** delete (so line 6 comes back).
+5. Go to the last line of the file.
+6. Switch to insert mode and type `THE END ` (with the trailing space) before the text of that last line, then leave insert mode.
+7. Save and quit.
+
+Write the exact keys you pressed for each of the 7 steps, and paste your `cat -n` output:
+
+#TODO [keys for step 1 <1pt>]
+#TODO [keys for step 2 <1pt>]
+#TODO [keys for step 3 <1pt>]
+#TODO [keys for step 4 <1pt>]
+#TODO [keys for step 5 <1pt>]
+#TODO [keys for step 6 <1pt>]
+#TODO [keys for step 7 <1pt>]
+
+```
+[output of `cat -n poem.txt` <1pt>]
+```
+
+# Part 7: Looking at data without opening it
+
+Using only `head`, `tail` and pipes (`|`), write a command for each.
+
+* (a) print only the header line of `covid.csv`
+* (b) print only the very last line
+* (c) print only line number 1000
+* (d) print lines 100 to 105 (six lines)
+* (e) print everything *except* the header
+* (f) print everything *except the last 5 lines*
+
+```bash
+#TODO [command (a) <1pt>]
+#TODO [command (b) <1pt>]
+#TODO [command (c) <1pt>]
+#TODO [command (d) <1pt>]
+#TODO [command (e) <1pt>]
+#TODO [command (f) <1pt>]
+```
+
+#TODO [(f) did it work on your machine? If not, what happened? <1pt>]
+
+`wc -l covid.csv` reports one number, but `grep -c '' covid.csv` (which counts every line, including an unfinished last one) reports a number **one larger**.
+
+#TODO [why are the two numbers different? What exactly does `wc -l` count? <2pts>]
+
+`less` is the pager you use to read files and manual pages. Open it with `less covid.csv`, and find the answers using `man less` and the keys in the lecture. For each, write the keys (or the command line) that you used:
+
+* (a) jump to line 500000 in the file, then back to the top
+* (b) search forward for `Anchorage`, go to the next match, then search *backwards*
+* (c) start `less` with line numbers showing. On which line number does `Anchorage` first appear?
+* (d) start `less` so that it jumps straight to the first match of `Anchorage` when it opens
+* (e) show **only** the lines containing `Alaska` (look for the `&` command in `man less`)
+
+
+#TODO [(a) keys <1pt>]
+#TODO [(b) keys <1pt>]
+#TODO [(c) command line, and the line number where `Anchorage` first appears <1pt>]
+#TODO [(d) command line <1pt>]
+#TODO [(e) keys <1pt>]
+
+# Part 8: Searching with `grep` and regular expressions
+
+Give the `grep` command (with `-c` when asked to count) and the result for each. Use `-E` and **single quotes** when the pattern uses special characters. Remember that the file has a header line and that a rule like "contains the word Texas" is not the same as "the state column is Texas".
+
+* (a) How many rows are from April 2020?
+* (b) How many rows have **exactly 0** deaths (the line ends with `,0`)?
+* (c) How many rows have **5 or more digits** of deaths (10,000 or more)?
+* (d) How many rows have an **empty `fips`** field?
+* (e) How many rows have a county name that **ends with "City"**?
+* (f) How many rows have a state whose name **starts with "North " or "South "**?
+* (g) How many rows are dated March 10 through March 15, 2020?
+* (h) How many rows are for the **state** Alaska in March 2020 (not county names that happen to contain "Alaska")?
+* (i) Show the lines of the file that do **not** begin with a valid date (`YYYY-MM-DD,`). What do you see, and why is this technique useful for a file you cannot read by eye?
+
+```bash
+#TODO [command (a) <1pt>]
+#TODO [command (b) <1pt>]
+#TODO [command (c) <1pt>]
+#TODO [command (d) <1pt>]
+#TODO [command (e) <1pt>]
+#TODO [command (f) <1pt>]
+#TODO [command (g) <2pts>]
+#TODO [command (h) <2pts>]
+#TODO [command (i) <1pt>]
+```
+
+# Part 9: Pipes and streaming
+
+Consider the following commands:
+
+```bash
+time (cat covid.csv | head -n 3)
+time (sort covid.csv | head -n 3)
+```
+
+#TODO [why is the first so much faster? Use the words *stream* and *broken pipe*. <2pts>]
+
+You can watch a stream happen by making the first command slow. This loop prints one line per second:
+
+```bash
+for i in 1 2 3 4 5; do echo "line $i"; sleep 1; done | cat
+for i in 1 2 3 4 5; do echo "line $i"; sleep 1; done | sort
+```
+
+Now time the loop when only its first line is wanted:
+
+```bash
+time (for i in 1 2 3 4 5; do echo "line $i"; sleep 1; done | head -n 1)
+```
+
+#TODO [the loop needs 5 seconds to finish, but the whole command takes about 1 second. What happened to the loop, and when exactly did it happen? <2pts>]
+#TODO [why do you think it took slightly more than one second? <1pt>]
+
+# Part 10: Advanced: learn it from the manual
+
+In this part you will use commands we did **not** cover in class. Use `man <command>` (type `/word` to search, `n` for the next match, `q` to quit) and `<command> --help`. Write down what you find.
+
+**`egrep`.** Run `man egrep`.
+
+* (a) What is the relationship between `egrep` and `grep -E`? Why do new scripts use `grep -E` instead? (Look in the manual, and see whether your system prints a warning when you run `egrep`.)
+* (b) Redo two earlier tasks with `egrep` instead of `grep -E`: the March 10 to 15 count (Part 8, (g)) and the number of rows for Texas **or** Ohio (a state, not a county; use `egrep` and an alternation `|`).
+* (c) `grep` has an option for **back-references**: in a pattern, `\1` repeats whatever the first `( )` group matched. Use it (read `man grep`, section "Back-references") to find the rows whose **county name is the same as the state name**. How many rows are there, and which (county, state) pairs? (Hint: the pairs can be extracted with `cut`, which comes next.)
+
+#TODO [(a) the relationship between `egrep` and `grep -E` <1pt>]
+#TODO [(a) why do new scripts use `grep -E`? Does your system print a warning when you run `egrep`? <1pt>]
+
+```bash
+#TODO [command (b), March 10 to 15 <1pt>]
+#TODO [command (b), Texas or Ohio <1pt>]
+#TODO [command (c) <2pts>]
+```
+
+**The `sudo` redirect trap.** You own `labs/01/scratch`, but you can make a file there that only the administrator can write to:
+
+```bash
+cd $my_52002_repo/labs/01/scratch
+sudo touch rootfile.txt
+sudo echo "hello" >> rootfile.txt # (a)
+```
+
+#TODO [the command (a) had `sudo` in it, so why did it fail? <2pts>]
+
+
+# Final checklist
+
+Before you push, check that:
+
+* every `[...]` placeholder (after each `#TODO`, in each output block and in each table cell) is filled in with your command / written answer (in legal English) / output based on what was requested;
+* `covid.csv` is **not** in your repository (`git status` should not mention it) and neither is anything in the `scratch` folder
+* the file renders: `quarto render lab01.qmd` produces an HTML page with no errors (nothing in this lab is executed during rendering).
