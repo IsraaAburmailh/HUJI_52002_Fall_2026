@@ -16,6 +16,7 @@ Let's make a scratch folder and setup:
 mkdir -p ~/workspace/HUJI_52002_Fall_2026/scratch/lec02
 cd ~/workspace/HUJI_52002_Fall_2026/scratch/lec02
 cp ../lec01/covid.csv . #what does this do?
+pwd
 ls -alh
 ```
 
@@ -24,11 +25,10 @@ ls -alh
 `tail -f` keeps showing new lines as they are added to a file, which is how you watch a log of a long-running job. To try it, open a second terminal and run the first line, which adds the date to `logfile.txt` every second. Then, in the first terminal, run the second line. Press Ctrl+C in both when done.
 
 ```bash
-cd ~/workspace/HUJI_52002_Fall_2026/scratch/lec02 # terminal 2
+cd ~/workspace/HUJI_52002_Fall_2026/scratch/lec02    # terminal 2
 while true; do date >> logfile.txt; sleep 1; done    # terminal 2
 tail -f logfile.txt                                  # terminal 1 .... then CTRL+C...
 ```
-
 
 What if we forget to close terminal 2?
 
@@ -41,17 +41,24 @@ ps -u $USER           # just your processes, from every terminal
 ps aux                # every process on the machine
 ```
 
-In `ps aux`, `a` means processes of all users, `u` means a user-oriented format (with the owner, PID, `%CPU`, `%MEM` and command) and `x` includes programs that have no terminal. To find one process by name, filter the list with a pipe + `grep`:
+In `ps aux`, `a` means processes of all users, `u` means a nice readable format (with the owner, PID, `%CPU`, `%MEM` and command) and `x` includes programs that are not attached to a user's terminal. To find one process by name, filter the list with a pipe + `grep`:
 
 ```bash
 ps aux | grep sleep   # find a process by name (grep filters the list)
 ```
 
-I'll see something like this:
+You'll see a long process name there. It's actually a bunch of bash code. It's positron's program inside WSL! This is very sloppy. They just ran a long multiline command. Why couldn't they have just wrapped it into ./init_positron_in_wsl.sh like we learned about???
+
+Let's get rid of it using a regex to just look at pure sleep processes.
+
+```bash
+ps aux | grep -P 'sleep [0-9]+$'   # find a process "sleep <num><endl>" by regex
+``` 
+
+You should see something like this:
 
 ```
-USER      PID     %CPU %MEM  VSZ   RSS   TTY    STAT START TIME COMMAND
-kapelner  2200782  0.0  0.0  17644 7936  pts/0  S+   23:45 0:00 sleep 300
+kapelner 1657525  0.0  0.0  17664  7808 pts/27   S+   21:00   0:00 sleep 1
 ```
 
 For the columns not self explanatory:
@@ -69,63 +76,67 @@ To watch processes live instead, use `htop`, and press `q` to quit:
 htop
 ```
 
-F4 filters the list (type `sleep`), F9 sends a signal to the selected process, and `q` quits.
+I have `htop` open all the time when I'm working in one of my tabs. You see the entire machine. Core usage, memory usage, swap usage (when memory is low it uses swap). All your processes my memory and cpu usage. If you click the I/O tab, you see the disk read/write usage by process. It also conveniently intercepts mouse input on most nix distributions.
 
-**Stopping a process.** The command `kill` takes a PID. Despite its name, it sends the process a **signal**, and the default signal is a polite request to stop, which lets the program clean up (close files, remove temporary data):
+F4 filters the list (type `sleep`), F9 sends a signal to the selected process, and `q` quits. F2 shows options. Note the tree structure. Programs call other programs which call other programs ... We can show PPID's (parent process IDs) by going to Screens - Columns. Once you see PPID, we can sort by it by using the mouse. First of all note the OS kernel is not a process (you wont' see "linux" in the list). But look at PPID 0 - root runs `systemd` which is about as deep as you can go - it is the service manager running the networking, logging, etc - a lot of the core processes.
+
+
+**Stopping a process.** The command `kill` takes a PID. Despite its name, it sends the process a **signal**, and the default signal is a polite request to stop, which lets the program clean up (close files, remove temporary data). You can only stop your own processes. Someone else's, or root's, needs `sudo`. Let's try the polite stop:
 
 ```bash
-kill 4702             # ask process 4702 to stop (signal SIGTERM)
-kill -9 4702          # force it to stop at once (SIGKILL): last resort
+ps aux | grep -P 'sleep [0-9]+$'
+kill 1675681             # ask process with PID = 1675681 to stop (signal SIGTERM)
 ```
 
-`kill -9` cannot be refused, but the program gets no chance to clean up and may leave half-written files behind, so try plain `kill` first. You can only stop your own processes. Someone else's, or root's, needs `sudo`. Let's try it:
+What happened? No such process? That's because look at the program - `sleep` was inside a loop, the whole program only lasts one second. So how do we kill this thing? We need to find its parent
 
 ```bash
-ps aux | grep sleep   # find a process by name (grep filters the list)
-kill <num> 
+ps -axo user,pid,ppid,tty,command | grep -P 'sleep [0-9]+$'   # PID, parent PID, command
+ps 1651422
 ```
 
-That didn't work because the PID changes every second! We need to find the PID of the parent of this process
-(i.e., the bash program running it)
+The command for the parent process is `/usr/bin/bash`, the terminal itself (plus an initialization script that positron throws in there, you won't see that if you're not using terminal within positron).
+
+Now let's try to end it:
 
 ```bash
-ps -axo pid,ppid,command | grep "sleep"   # PID, parent PID, command
-ps 418990
+kill 1651422          
+ps -axo user,pid,ppid,tty,command | grep -P 'sleep [0-9]+$'   # PID, parent PID, command
 ```
 
-Now let's stop it gracefully
+It refuses to die! So we need a bigger caliber bullet. `kill -9` cannot be refused, but the program gets no chance to clean up and may leave half-written files behind. But we don't have a choice.
 
 ```bash
-kill 418990
-ps aux | grep sleep
-```
-
-Didn't work. Let's force it to stop:
-
-```bash
-kill -9 418990
-ps aux | grep sleep
+kill -9 1651422 #note how the tab on the right just got closed
+ps aux | grep -P 'sleep [0-9]+$'
+rm logfile.txt #cleanup the output of the program
 ```
 
 Our loop teaches two lessons about this:
 
-- Stopping the parent process is more failsafe.
-- Interactive shells ignore the polite request. `kill 4702` on the shell in terminal 2 appears to do nothing, because an interactive shell ignores SIGTERM. `kill -9 4702` works, but it ends the shell itself, and terminal 2 closes. The normal way to stop a loop is **Ctrl+C in its own terminal**, which sends the process a different signal, SIGINT (number 2).
+- Stopping the parent process is failsafe.
+- Interactive shells ignore the polite request because an interactive shell ignores SIGTERM. `kill -9` works, but it ends the shell itself, and terminal 2 closes. The normal way to stop a loop is **Ctrl+C in its own terminal**, which sends the process a different signal, SIGINT (number 2).
 
 ## Columns, sorting and counting
 
 `cut` picks columns, `sort` orders lines, and `uniq` collapses repeated lines. They are the backbone of command-line data analysis:
 
 ```bash
-echo "alias csv_cols='column -s, -t'" >> ~/.bashrc               # a shortcut: ll
+echo "alias csv_cols='column -s, -t'" >> ~/.bashrc               # a shortcut 
 source ~/.bashrc                    # read the file now, instead of reopening
-#my bashrc moves me to another folder - you won't need the following
+#my bashrc moves me to another folder (you won't need the following change directory)
 cd ~/workspace/HUJI_52002_Fall_2026/scratch/lec02
 #date,county,state,fips,cases,deaths
-cut -d, -f1,3 covid.csv | head -n 10 | csv_cols     # columns 1 and 3
+#    delimeter: ,    columns to output: 1 and 3  text file to cut
+#    ^^              ^^^                         ^^^^^^^^^
+cut -d,             -f1,3                        covid.csv         | head -n 10 | csv_cols
+```
+
+Now let's see some more examples:
+
+```bash
 cut -d, -f1,3 covid.csv | head -n 10 | sort -r | csv_cols     # columns 1 and 3 most recent first
 cut -d, -f1,3 covid.csv | sort -r | head -n 10 | csv_cols     # why is this slower?
-cut -d, -f1,3 covid.csv | head -n 10 | csv_cols     # columns 1 and 3 most recent first
 cut -d, -f2-4 covid.csv | head -n 4 | csv_cols     # columns 2 through 4
 cut -d, -f2-4 covid.csv | head -n 4 | uniq | csv_cols    #same output just pruned to unique rows
 cut -d, -f2-4 covid.csv | head -n 4 | uniq -c | csv_cols #counts the unique rows
@@ -135,16 +146,20 @@ cut -c1-7     covid.csv | uniq -c | csv_cols   # number of cases per month, most
 cut -c1-7     covid.csv | uniq -c | sort -nr | csv_cols   # sorted as a number (not text), largest first
 ```
 
-::: {.callout-warning}
-## `cut` doesn't understand quoted fields
-`cut -d, -f2` splits at *every* comma, even one inside quotes. For a file with a line `"Smith, John",Boston`, column 2 comes out as ` John"` instead of `Boston`. `covid.csv` has no quoted fields, so we are safe here, but real CSV files often do. Check with `grep -c '"'` first, and use a tool that understands CSV (R, Python, DuckDB) when it matters:
+What happens here?
+
 
 ```bash
-printf 'name,city\n"Smith, John",Boston\n' > quoted.csv
-cut -d, -f2 quoted.csv
-```
-:::
+cat > quoted.csv << 'EOF'
+name,city
+"Smith, John",Boston
+EOF
 
+cut -d, -f2 quoted.csv
+rm quoted.csv
+```
+
+`cut` doesn't understand quoted fields; it splits at *every* comma, even one inside quotes. We will need something more full-bodied than `cut` for datasets like this. We'll see these later.
 
 To sort a CSV by a column, tell `sort` the separator with `-t` and the column with `-k`. Write the column twice, `-k5,5`, so it sorts on that column alone and not everything after it:
 
@@ -155,25 +170,38 @@ sort -t, -k3,3 -k5,5nr covid.csv | head -n 30 # state, then cases (high to low)
 sort -t, -k4,4 -u covid.csv | wc -l          # one row per distinct fips code
 ```
 
-`uniq` removes repeated lines, but only repeated *neighbors*, which is why it almost always follows a `sort`:
+`uniq` removes repeated lines, but only repeated *neighbors*, which is why it almost always follows after a `sort` command:
 
 ```bash
-printf 'a\nb\na\na\nc\n' | uniq               # a b a c: neighbors only
-printf 'a\nb\na\na\nc\n' | sort | uniq        # a b c
-printf 'a\nb\na\na\nc\n' | sort | uniq -c     # with counts: 3 a, 1 b, 1 c
+cat > simple.csv << 'EOF'
+a
+b
+a
+a
+c
+EOF
+cat simple.csv | uniq               # a b a c: neighbors only
+cat simple.csv | sort | uniq        # a b c
+cat simple.csv | sort | uniq -c     # with counts: 3 a, 1 b, 1 c
+rm simple.csv
 ```
 
 Put them together and you can answer real questions about a file with 885,000 rows in a few seconds:
 
 ```bash
+#covid csv column names for reference
 #date,county,state,fips,cases,deaths
-cut -d, -f3 covid.csv | sort | uniq -c | sort -rn | head -n 5   # top 5 states
-cut -d, -f3 covid.csv | sort -u | wc -l           # how many distinct "states"?
-cut -d, -f2,3 covid.csv | sort -u | wc -l         # distinct county-state pairs
-grep -E ',(Texas|Ohio),' covid.csv | cut -d, -f1,2,5 | head -n 2
+# How many unique states are there?
+cut -d, -f3 covid.csv | sort -u | wc -l
+# How many unique counties are there? (why do we need cols 2 and 3?)
+cut -d, -f2,3 covid.csv | sort -u | wc -l 
+# What are the top 5 states for number of reports?
+cut -d, -f3 covid.csv | sort | uniq -c | sort -rn | head -n 5 | csv_cols
+#What are the top 10 days in Texas and/or California by number of cases
+grep -E ',(Texas|California),' covid.csv | sort -t, -k5,5 -n -r | head -n 10 | csv_cols
 ```
 
-The pattern `sort | uniq -c | sort -rn | head` is a useful idiom: *count how often each value occurs, and show the most common first*.
+The pattern `sort | uniq -c | sort -rn | head` is a useful string of commands: *count how often each value occurs, and show the most common first*.
 
 
 ## Chaining commands and exit status
@@ -185,8 +213,9 @@ echo a; echo b                    # ; runs both regardless of failures
 mkdir results && cd results       # && : second only if the first worked
 pwd
 cd ..
+rm -r results #cleanup
 cd /nonexistent && echo "arrived in /nonexistent" # the echo never runs
-cd /nonexistent || echo "never arrived in /nonexistent"  # || : second only if first failed
+cd /nonexistent || echo "never arrived in /nonexistent"  # || : second runs if first failed
 grep -q "Alaska" covid.csv && echo "found it"
 grep -q "Atlantis" covid.csv || echo "not there"
 ```
@@ -200,8 +229,7 @@ How big is the machine you are on? This matters for deciding how much data fits 
 
 ```bash
 nproc                 # number of CPU cores (on a Mac: sysctl -n hw.ncpu)
-free -h                # memory used and free (Linux only)
-uptime                # how long it has been up, and the recent load average
+free -h               # memory used and free (Linux only)
 ```
 
 **Demo: watch a process eat CPU.** Run this in one terminal, and `htop` in another:
@@ -230,6 +258,7 @@ jobs                  # list background jobs in this terminal only
 jobs #no jobs
 kill %1               # or: stop background job number 1 or kill 2855414 by PID
 jobs #no jobs
+htop
 ```
 
 Another possibility:
@@ -246,6 +275,8 @@ Multiple background jobs administration:
 ./useless_cpu_eating_program.sh &
 ./useless_cpu_eating_program.sh &
 ./useless_cpu_eating_program.sh &
+./useless_cpu_eating_program.sh &
+jobs
 fg %2 #bring second one to forefront
 jobs
 jobs -p
@@ -256,20 +287,25 @@ Can we pipe that output into the `kill` function? Yes, you but you have to ensur
 ```bash
 jobs -p | xargs kill #runs kill pid1; kill pid2; kill pid3; ... and can be parallelized
 jobs
-rm 
+rm useless_cpu_eating_program.sh #cleanup
 ```
 
-The `xargs` function is pretty useful as it turns pipe output into executable code. It is frequently used with `-P $(nproc)` which tells linux to do all the jobs in parallel using a threadpool with number of threads equal to the number of cores on the machine for near optimal speed. You'll see this on the homework.
+The `xargs` function is pretty useful as it turns pipe output into executable code. It is frequently used like `xargs -P $(nproc) <command>` which tells linux to do all the jobs in parallel using a threadpool with number of threads equal to the number of cores on the machine for near optimal speed. You'll see this on the homework.
 
 Back to background jobs... A background job started with `&` belongs to your terminal window and stops when you close your terminal. For a long job run on a remote server (we will be using remote servers as soon as I get them set up for you guys), this is completely unacceptable. What if you were processing a large amount of data on a remote supercomputer and your wifi went out? Your job is cooked.
 
 Solution #1: use `nohup` ("no hang-up"), which keeps it alive after you log out. Let's go back to our infinite loop program:
 
 ```bash
-echo "while true; do date; sleep 1; done" > "infinite_loop.sh"
+cat > infinite_loop.sh << 'EOF'
+#!/usr/bin/env bash
+while true; do date; sleep 1; done
+EOF
 chmod +x infinite_loop.sh
 ls -alh
 ```
+
+Without the shebang line, the demo below creates a forked child which doesn't have the name "infinite_loop". I blew an hour tracing it down. Should've listened to my own advice and used shebang!!!
 
 On a critical job, you also want to log output and errors. So we will use the redirections from earlier to save the output.
 
@@ -278,32 +314,49 @@ nohup ./infinite_loop.sh > out.log 2>&1 &    # survives logging out and 2>&1 ens
 tail -f out.log                               # check on the program's output whenever you like
 #now let's open another terminal and set to working directory
 cd ~/workspace/HUJI_52002_Fall_2026/scratch/lec02
-jobs #it's not here because jobs only accesses jobs as part of a terminal
-ps -aux | grep "[i]nfinite" #our inifinite loop job is running. tangent: why i in bracket? I'll try to put it on the homework
+jobs #it's not here because again, jobs only accesses jobs as part of a terminal
+ps -aux | grep "[i]nfinite_loop" #our inifinite loop job is running. tangent: why i in bracket? Try it without and you'll see why
 #now let's close the first terminal (where we started the job)
 tail -f out.log #our inifinite loop job is still going
 #the demo is over, cleanup after ourselves
-kill 2874105 
+kill 1700398 
 rm out.log
+ps -aux | grep "[i]nfinite_loop" #to check that polite kill worked
 ```
 
-`nohup` keeps one command alive after you log out. `tmux` ("terminal multiplexer") keeps a whole *terminal* alive: you start a session on the server, begin your work, **detach**, and log out. The session keeps running, and when you log in again later you **attach** and find everything as you left it, including every customization you made.
+`nohup` keeps one command alive after you log out. `tmux` ("terminal multiplexer") keeps a whole *terminal* alive: you start a session on the server e.g. with `ssh` which we will see next week hopefully, begin your work, **detach**, and log out. The session keeps running, and when you log in again later you **attach** and find everything as you left it, including every customization you made.
 
 ```bash
+tty; echo "" #my current (soon to be parent) terminal number 
 tmux new -s my_infinite_job_terminal # start a session
+pwd #same place
+whoami #I'm still the same
+tty; echo "" #the tmux terminal number 
+#you can now close the tmux when you're done
+exit
+tty; echo "" #my current (child) terminal number 
+#and open a new one whenever you want
+tmux new -s my_infinite_job_terminal
 #note the bar at the bottom indicating you are using a terminal within a terminal
 #set to working directory
 cd ~/workspace/HUJI_52002_Fall_2026/scratch/lec02
-./infinite_loop.sh > out.log 2>&1 &  # start the job
-                                     # now press Ctrl+B, release the terminal entering
-                                     # into command mode, then press "d" to detach and
-                                     # return to the home terminal
-#you can now close the terminal / logout of the remote machine
-#now open a new terminal / login to the remote machine
-tmux ls                                       # (later) list your sessions
+./infinite_loop.sh > out.log 2>&1 &  # start the background job (no need for nohup)
+tail -f out.log
+ps aux | grep "[i]nfinite_loop" 
+# now let's invoke tmux commands: press Ctrl+B to enter into tmux command mode, 
+#now release the terminal entering "d" to detach from command mode and this will
+# return us to the home terminal (notice the "detached" message)
+tmux ls                                       # list your tmux sessions
+tail -f out.log
+ps aux | grep "[i]nfinite_loop" 
+jobs
 tmux attach -t my_infinite_job_terminal       # come back: the job is still running
+jobs
 tmux kill-session -t my_infinite_job_terminal # delete the session when the job is done
 tmux ls                                       # this session is gone
+tail -f out.log
+ps aux | grep "[i]nfinite_loop" 
+rm out.log
 ```
 
 Every `tmux` key combination starts with the **prefix**, Ctrl+B, followed by one more key:
@@ -314,7 +367,7 @@ Every `tmux` key combination starts with the **prefix**, Ctrl+B, followed by one
 | Ctrl+B, then c | create a new tabbed terminal inside the session |
 | Ctrl+B, then n / p | go to the next / previous tabbed terminal |
 
-`screen` is an older program that does the same thing, and you will still meet it on old servers. A good rule of thumb: use `nohup ... &` for a lightweight one fire-and-forget command, and `tmux` when you want to come back to a whole terminal and look at it or work in it.
+`screen` is an older program that does the same thing, and you will still meet it on old servers. A good rule of thumb: use `nohup ... &` for a lightweight one-off fire-and-forget command, and `tmux` when you want to come back to a whole terminal and look at it or work in it.
 
 
 # Reshaping text: `awk`, `sed`, `tr` and `jq`
@@ -324,8 +377,8 @@ Every `tmux` key combination starts with the **prefix**, Ctrl+B, followed by one
 **Why learn these when you have R and Python?** Because they are the right tools for the work you do *before* you load the data:
 
 1. **Look before you load.** `head`, `wc -l`, `cut`, `sort | uniq -c` and `grep` tell you what is in a file, how big it is and whether it is sane in seconds, without waiting for it to load or crashing your session on a file bigger than RAM.
-2. **Shrink the data first.** Filter the rows and keep only the columns you need in the shell, then load the small result. A file that does not fit in memory often does after that.
-3. **Sanity-check and debug.** A blank line, a missing header or a wrong row count is far easier to see in the shell than as a confusing error from `read_csv`.
+2. **Shrink the data first.** Filter the rows (via `grep`) and keep only the columns you need (via `cut`) in the shell, then load the small result. A file that does not fit in memory often does after that.
+3. **Sanity-check and debug.** A blank line, a missing header or a wrong row count is far easier to see in the shell than as a confusing error in R/Python.
 
 Once the question needs joins, models, plots or anything you must be able to explain and rerun, move to R or Python (or DuckDB, which runs SQL directly on a big CSV). Shell one-liners are quick but terse and hard to test, so keep them for exploration and put the real analysis in a script or notebook.
 
@@ -497,57 +550,3 @@ tar --zstd -cf proj.tar.zst proj/   # a tar archive compressed with zstd
 ## Try it
 Compress `covid.csv` with `gzip -k` and with `zstd -k`, and compare the sizes with `ls -lh`. Then compare `time wc -l covid.csv` with `time zcat covid.csv.gz | wc -l`. Which is faster, and why? (The file is probably already cached in memory. Would the answer change if it were on a slow disk or a network drive?)
 :::
-
-# Working on remote machines: `ssh`, `scp`, `rsync` and `tmux`
-
-Big data rarely lives on your laptop. You work on a server or a cluster: a computer in a machine room that you reach over the network, with far more cores, memory and disk than yours. Everything you have learned so far works there too, because you give it commands through a shell. The tools below get you there, move the files, and keep your jobs alive.
-
-(These examples need an account on a remote machine. Replace `user@server` with your own login.)
-
-## `ssh`: log in to another machine
-
-```bash
-ssh user@server          # log in; the prompt is now on the server
-ssh user@server "df -h"  # run one command there and come back
-exit                                 # leave the server (or Ctrl+D)
-```
-
-After `ssh` connects, you are typing into a shell on the server, and `pwd`, `ls`, `htop` and the rest refer to *that* machine. Check which one you are on by the prompt or with `hostname`.
-
-Typing a password each time gets tedious. A **key pair** replaces it: you create a private key that stays on your computer and a public key that you give to the server:
-
-```bash
-ssh-keygen -t ed25519                # make the key pair, once
-ssh-copy-id user@server  # install your public key on the server
-ssh user@server          # now logs in without a password
-```
-
-Never share the private key (`~/.ssh/id_ed25519`). The public one, `id_ed25519.pub`, is meant to be shared.
-
-## `scp` and `rsync`: copy files between machines
-
-`scp` ("secure copy") is `cp` across the network. The remote side is written `user@server:path`, and the colon is what says "this is on the server":
-
-```bash
-scp results.csv user@server:~/data/     # your computer to the server
-scp user@server:~/out/model.pkl .       # server to here (. : this folder)
-scp -r results/ user@server:~/          # -r : a whole folder
-```
-
-`rsync` does the same job better for anything big or repeated. It compares both sides and sends only what is missing or changed, so a second run of a large copy takes seconds, and an interrupted one can be resumed:
-
-```bash
-rsync -av data/ user@server:~/data/     # -a : keep folders, dates; -v : talk
-rsync -avz data/ user@server:~/data/    # -z : compress while sending
-rsync -avP data/ user@server:~/data/    # -P : progress, keep partial files
-rsync -avn data/ user@server:~/data/    # -n : dry run, only show the plan
-```
-
-::: {.callout-warning}
-## The trailing slash matters
-`rsync -av data/ dest/` copies the *contents* of `data` into `dest`. Without the slash, `rsync -av data dest/` creates `dest/data`. The same is true on the destination side. When in doubt, add `-n` first.
-:::
-
-## `tmux`: a terminal that survives disconnects
-
-
