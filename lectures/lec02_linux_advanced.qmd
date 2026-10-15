@@ -321,6 +321,14 @@ Every `tmux` key combination starts with the **prefix**, Ctrl+B, followed by one
 
 `cut` and `grep` take you a long way, but they cannot reorder columns, compute anything or change the text they print. Four more tools fill the gaps. All of them read a stream, so they work in pipes and on files that don't fit in memory.
 
+**Why learn these when you have R and Python?** Because they are the right tools for the work you do *before* you load the data:
+
+1. **Look before you load.** `head`, `wc -l`, `cut`, `sort | uniq -c` and `grep` tell you what is in a file, how big it is and whether it is sane in seconds, without waiting for it to load or crashing your session on a file bigger than RAM.
+2. **Shrink the data first.** Filter the rows and keep only the columns you need in the shell, then load the small result. A file that does not fit in memory often does after that.
+3. **Sanity-check and debug.** A blank line, a missing header or a wrong row count is far easier to see in the shell than as a confusing error from `read_csv`.
+
+Once the question needs joins, models, plots or anything you must be able to explain and rerun, move to R or Python (or DuckDB, which runs SQL directly on a big CSV). Shell one-liners are quick but terse and hard to test, so keep them for exploration and put the real analysis in a script or notebook.
+
 ## `awk`: column-aware processing
 
 `awk` (acronym of the three authors) reads its input one line at a time and splits every line into fields. `$1` is the first field, `$3` the third, `$0` the whole line, `NF` the number of fields and `NR` the line number. A program has the form `condition {action}`: for every line that meets the condition, do the action. With no condition the action runs on every line, and with no action matching lines are printed.
