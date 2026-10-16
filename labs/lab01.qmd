@@ -270,6 +270,7 @@ The command `ls . /nonexistent` writes to both stdout and stderr (the listing an
 Now run these two lines and look carefully at what appears on the screen and what is in `a.txt` and `b.txt`:
 
 ```bash
+ls . /nonexistent > a.txt 2>&1
 ls . /nonexistent 2>&1 > b.txt
 ```
 
