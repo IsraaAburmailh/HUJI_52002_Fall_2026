@@ -30,16 +30,16 @@ With the environment active, install the Python packages we use in the course, s
 
 ```bash
 pip install numpy pandas polars duckdb pyarrow scikit-learn lightgbm \
-  ipykernel "xgboost-cpu; sys_platform == 'linux'" \
+  ipykernel "psycopg[binary]" "xgboost-cpu; sys_platform == 'linux'" \
   "xgboost; sys_platform == 'darwin'"
 ```
 
-The last two entries, quotes included, are two versions of the same package, and `pip` picks the one for your system. On Ubuntu it installs `xgboost-cpu`, a build without GPU support; the regular build pulls in several hundred megabytes of NVIDIA libraries that only matter when training on multiple GPUs. On a Mac, where no such build exists or is needed, it installs the regular `xgboost`. Either way the package is used as `xgboost` in your code. Near the start of its output, `pip` prints a line beginning with `Ignoring` about the version it did not install, which is expected.
+`psycopg` is the PostgreSQL driver for Python (the `[binary]` part, quotes included, selects a ready-built version so nothing needs compiling). The last two entries, quotes included, are two versions of the same package, and `pip` picks the one for your system. On Ubuntu it installs `xgboost-cpu`, a build without GPU support; the regular build pulls in several hundred megabytes of NVIDIA libraries that only matter when training on multiple GPUs. On a Mac, where no such build exists or is needed, it installs the regular `xgboost`. Either way the package is used as `xgboost` in your code. Near the start of its output, `pip` prints a line beginning with `Ignoring` about the version it did not install, which is expected.
 
 This downloads a couple of hundred megabytes, so it can take several minutes. Check that the packages load:
 
 ```bash
-python -c "import numpy, pandas, polars, duckdb, pyarrow; print('ok')"
+python -c "import numpy, pandas, polars, duckdb, pyarrow, psycopg; print('ok')"
 python -c "import sklearn, xgboost, lightgbm; print('ok')"
 ```
 
@@ -66,6 +66,19 @@ Rscript -e 'suppressMessages({library(tidyverse); library(data.table)
 ```
 
 This should print `ok`. If it says `there is no package called` something, look through the output of the install command for a line saying `installation of package ... had non-zero exit status`. That package had to be compiled on your computer and something it needs was missing, almost always a system library. On Ubuntu, the usual cause is having skipped the `sudo apt install` line in the "Prepare R for installing packages" section of the Ubuntu guide; `RPostgres`, for example, needs `libpq-dev` from that line. Run that line, then run the `install.packages` command above again.
+
+# Connecting to PostgreSQL from R and Python
+
+In the earlier guide you saw that `psql` connects without a password. The same is true from R and Python, with one rule: **do not pass a `host`**. Check both:
+
+```bash
+Rscript -e 'con <- DBI::dbConnect(RPostgres::Postgres()); print(DBI::dbGetQuery(con, "SELECT version()"))'
+python -c "import psycopg; print(psycopg.connect().execute('SELECT version()').fetchone()[0])"
+```
+
+Each should print a line beginning with `PostgreSQL 18`.
+
+Why the rule: with no `host`, the connection goes through a local socket file and PostgreSQL identifies you by your operating-system username, which is why no password is needed. With `host = "localhost"`, which many tutorials show, the connection goes over the network instead, and PostgreSQL then insists on a password that your setup never created. The error is `fe_sendauth: no password supplied`. If you ever do need a network connection (for example from a program that cannot use the socket), set a password once with `\password` inside `psql` and then pass `host = "localhost"` together with `password`.
 
 # R and Python together in Quarto
 

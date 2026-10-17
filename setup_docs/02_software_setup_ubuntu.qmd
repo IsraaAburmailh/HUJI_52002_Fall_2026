@@ -118,7 +118,7 @@ The second command asks you to press Enter to confirm. The database server start
 pg_lsclusters
 ```
 
-You should see a line for version `18`, cluster `main`, port `5432`, with status `online`. If the status is `down`, start the server with `sudo systemctl start postgresql`.
+You should see a line for version `18`, cluster `main`, port `5432`, with status `online`. If the status is `down`, start the server with `sudo service postgresql start`. (This works both on a regular Ubuntu and inside WSL, where `systemctl` may not be available.)
 
 Out of the box, only the administrative user `postgres` can connect. Create a database user with your Ubuntu username, and a database with the same name:
 
