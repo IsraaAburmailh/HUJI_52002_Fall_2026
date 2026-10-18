@@ -16,21 +16,6 @@ format:
 Almost everything here works the same in the Mac Terminal. The exceptions are small: the Linux commands `free` and `nproc` don't exist on a Mac (use `top`, and `sysctl -n hw.ncpu`), `ps aux --sort=...` and `stat -c` are Linux-only forms, and the shell's startup file is `~/.zshrc` instead of `~/.bashrc`.
 :::
 
-Before we start Linux, let's make sure you have R and Python setup correctly. Here are two chunks that should test it. Go to console on the bottom pane and click the "+" sign to start both an R session. Then click the down icon next to plus and click "start another" and choose the python in 
-
-```{r}
-7 + 3
-```
-
-```{python}
-7 + 3
-```
-
-Assuming you're using Positron, we need the ability to send commands from this `qmd` document directly to terminal. (By default this is only enabled for R or Python). So follow these instructions:
-
-Open File → Preferences → Keyboard Shortcuts, or press Ctrl+K and then Ctrl+S.
-In the search box, type "Run Selected Text In Active Terminal".
-Click the pencil icon next to that command, press the keys you want (for example Ctrl+Alt+Enter), then press Enter. You don't want to use Ctrl+Enter as this will conflict with R later.
 
 We first create a subfolder for scratch work for this lecture and move there using `mkdir` (make [new] directory [if it doesn't exist])  The `~` is a useful shortcut; it means "home directory". W
 

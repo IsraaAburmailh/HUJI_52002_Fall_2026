@@ -85,7 +85,7 @@ F4 filters the list (type `sleep`), F9 sends a signal to the selected process, a
 
 ```bash
 ps aux | grep -P 'sleep [0-9]+$'
-kill 1675681             # ask process with PID = 1675681 to stop (signal SIGTERM)
+kill 3765917             # ask process with PID = 1675681 to stop (signal SIGTERM)
 ```
 
 What happened? No such process? That's because look at the program - `sleep` was inside a loop, the whole program only lasts one second. So how do we kill this thing? We need to find its parent
@@ -100,14 +100,14 @@ The command for the parent process is `/usr/bin/bash`, the terminal itself (plus
 Now let's try to end it:
 
 ```bash
-kill 1651422          
+kill 3759095          
 ps -axo user,pid,ppid,tty,command | grep -P 'sleep [0-9]+$'   # PID, parent PID, command
 ```
 
 It refuses to die! So we need a bigger caliber bullet. `kill -9` cannot be refused, but the program gets no chance to clean up and may leave half-written files behind. But we don't have a choice.
 
 ```bash
-kill -9 1651422 #note how the tab on the right just got closed
+kill -9 3759095 #note how the tab on the right just got closed
 ps aux | grep -P 'sleep [0-9]+$'
 rm logfile.txt #cleanup the output of the program
 ```
@@ -209,7 +209,7 @@ Sometimes you want to look at a result *and* keep an intermediate stage for late
 
 ```bash
 cut -d, -f3 covid.csv | sort | uniq -c | tee counts.txt | sort -rn | head -n 5
-head -n 3 counts.txt # the counts before the `sort -rn | head` above
+cat counts.txt # the counts before the `sort -rn | head` above
 rm counts.txt #cleanup
 ```
 
@@ -330,7 +330,7 @@ ps -aux | grep "[i]nfinite_loop" #our inifinite loop job is running. tangent: wh
 #now let's close the first terminal (where we started the job)
 tail -f out.log #our inifinite loop job is still going
 #the demo is over, cleanup after ourselves
-kill 1700398 
+kill 3780056 
 rm out.log
 ps -aux | grep "[i]nfinite_loop" #to check that polite kill worked
 ```
@@ -479,9 +479,9 @@ cp covid.csv covid_edit.csv                            # work on a copy: -i chan
 sed -i.bak 's/California/CA/g' covid_edit.csv          # edit in place, keep covid_edit.csv.bak
 ls -alh
 grep -c California covid_edit.csv covid_edit.csv.bak covid.csv        # 0 in the edited file, the original count in the backup
-sed -i 's/Texas/TX/g' covid_edit.csv                 # edit in place, no backup, cowboy-style
+sed -i 's/California/CA/g' covid_edit.csv                 # edit in place, no backup, cowboy-style
 ls -alh
-grep -c Texas covid_edit.csv covid_edit.csv.bak covid.csv        # 0 in the edited file, the 
+grep -c California covid_edit.csv covid_edit.csv.bak covid.csv        # 0 in the edited file, the 
 rm covid_edit.csv covid_edit.csv.bak                   # cleanup
 ```
 
@@ -802,6 +802,8 @@ What if you want `grep` and `cut` operations for YML, JSON, XML in bash? `jq` is
 
 # Open source: a short introduction
 
+This section will be on the homework but I won't put it on the exams.
+
 Almost every tool in this course (Linux, `bash`, `awk`, `git`, Python, R, `pandas`, Quarto) is **open source**: the source code is public, and a **license** gives everyone the right to use, modify and share it. Without a license the code is legally "all rights reserved", even if it sits on a public GitHub page. So the license is what makes a project open source, and it is worth knowing what the common ones allow.
 
 ## How big is it, and how fast did it grow?
@@ -902,459 +904,3 @@ What each license lets you do, and what it asks of you in return:
 +-------------------+--------------------------+------------------------------------------------------+
 
 : Check any project yourself: the license is usually in a file called `LICENSE` or `COPYING` in the repository (`ls`, `head LICENSE`), and GitHub shows it on the repository page.
-
-# Version control with `git`
-
-## Introduction
-
-The setup guide explains the `git add` - `git commit` - `git push` idiom to hand in your labs. In this unit we look at what those commands actually do, and at the handful of other commands that you will likely use if you pursue data science / engineering.
-
-`git` keeps a complete history of a folder of files. Every saved snapshot is called a **commit**; it has an author, a date, a message, and a short identifying alphanumeric code e.g., `a1b2c3d`. Nothing in a commit is ever silently overwritten, which is why `git` is such a good safety net.
-
-`git` is not the only version control system, but it is the dominant one by far. Nobody counts "worldwide users" of a free tool exactly, so the best we have is the share of developers who say they use each one in surveys (people can name several, so shares can add to more than 100%).
-
-| System           | Born | Model       | Share of developers (approx.) | Where you meet it                         |
-|:-----------------|-----:|:------------|------------------------------:|:------------------------------------------|
-| `git`            | 2005 | distributed |                          ~94% | Almost everything, including `git` itself |
-| Subversion (SVN) | 2000 | centralized |                           ~5% | Older companies and some academic groups  |
-| Perforce         | 1995 | centralized |       a few % (no clean data) | Game studios, huge binary assets          |
-| Mercurial (`hg`) | 2005 | distributed |                           ~1% | Legacy projects (Mozilla moved to git)    |
-| CVS              | 1990 | centralized |    ~0% (legacy projects only) | Museum piece; SVN was built to replace it |
-
-: Version control systems, ordered by share of developers. Survey figures are approximate and the 2025 numbers are secondhand (via [RhodeCode's summary](https://rhodecode.com/insights) of the Stack Overflow survey); Perforce and CVS have no reliable current figure, so their order is a rough judgement from [a Gartner legacy-project poll](https://www.gartner.com/peer-community/poll/what-version-control-system-vcs-are-you-using-for-legacy-projects).
-
-`git` is the tool; GitHub is a website/company that hosts `git` repositories (which are called the "remotes" e.g. `origin`, `master`, `main`) and manages "pull requests", issue tracking and so on. Here is a list of places where `git` is served:
-
-| Host                  | Owner     | Accounts (approx.) | Notes                                                   |
-|:----------------------|:----------|-------------------:|:--------------------------------------------------------|
-| GitHub                | Microsoft |              ~180M | Largest by far; where our course repo lives             |
-| Self-hosted servers   | companies |    ~20-40M (guess) | Private servers; overlaps other rows                    |
-| GitLab                | GitLab    |  ~30M (unreliable) | Popular to self-host inside companies                   |
-| Bitbucket             | Atlassian |               ~15M | Integrates with Jira; dropped Mercurial support         |
-| Azure DevOps, others  | various   |   no public figure | Common in Microsoft shops, SourceForge is the old-timer |
-
-: Git hosting services, ordered by accounts. GitHub's figure is from its 2025 Octoverse report (via [secondary coverage](https://www.getpanto.ai/blog/github-statistics)); Bitbucket's is Atlassian's 2025 "developers" count; GitLab's is an undated third-party estimate. Accounts are not active users, and one person may hold several. The self-hosted row is my own order-of-magnitude guess, not a measurement: no one publishes a total, so it assumes a large share of GitLab's accounts and most of Bitbucket's enterprise users sit on company-run servers. Private repos kept on GitHub itself are not counted. 
-
-GitHub is the biggest venue for open source software in the world. Most of the projects we met in the previous section keep their code there: [Python](https://github.com/python/cpython), [R](https://github.com/wch/r-source) (a mirror, see below), [Linux](https://github.com/torvalds/linux) (also a mirror), [`pandas`](https://github.com/pandas-dev/pandas), [`NumPy`](https://github.com/numpy/numpy), [`TensorFlow`](https://github.com/tensorflow/tensorflow), [`PyTorch`](https://github.com/pytorch/pytorch), [`Kubernetes`](https://github.com/kubernetes/kubernetes), [`VS Code`](https://github.com/microsoft/vscode) and [Quarto](https://github.com/quarto-dev/quarto-cli), [`git`](https://github.com/git/git) itself, along with millions of smaller libraries. Even projects that develop elsewhere keep a mirror on GitHub, such as the Linux kernel (developed through mailing lists), R (developed in Subversion) and [PostgreSQL](https://github.com/postgres/postgres) (which runs its own git server), because that is where people look for code. It became the default for three reasons:
-
-* **Network effect:** with about 180 million developers, a project on GitHub is where its potential users and contributors already are.
-* **Low friction:** anyone can **fork** (copy) a project, change it and propose the change back with a **pull request**, with no permission needed. Issues, discussion and automated testing live on the same page.
-* **Visibility:** search, **stars** and your commit history on your profile make GitHub a public CV, and employers often look at it. In a 2017 [HackerRank survey](https://www.hackerrank.com/research/developer-skills/2018), most hiring managers said they look for proven skill such as previous work and projects/GitHub, and in interviews with employers ([Marlow and Dabbish, 2013](https://www.researchgate.net/publication/262248832_Activity_traces_and_signals_in_software_developer_recruitment_and_hiring)) they said they trust visible activity more than résumé claims. Microsoft bought GitHub in 2018 for about $7.5 billion likely because they wanted to buy the network of all the developers.
-
-That is also why you hand in your labs through it: the habits you build in this course (commit, push, pull request) are the ones used by open source projects everywhere and companies everywhere. You are learning the standard for any sort of software engineering and data science.
-
-::: {.callout-warning}
-## Demo rules
-I'll run every command below in the actual 52002 course repository. The first demo, a live commit and push of this very lecture file, is real. Everything after it happens only on **throw-away "branches"** that we delete at the end, so `main` is never touched by it (`main` is the production code for that runs this course) Two rules for the throw-away part that I'll stick to: never `git push` those branches, and use explicit file names with `git add` (not `git commit -a`), because our working folder may hold other unfinished changes.
-:::
-
-## The places a change travels through
-
-A change to a file passes through several places on its way to GitHub:
-
-```
- working folder     staging area      local repository         GitHub
-  (your files)      (next commit)      (your history)     (remote: origin)
-        |                 |                   |                   |
-        |---- git add ---->                   |                   |
-        |                 |--- git commit ---->                   |
-        |                 |                   |---- git push ----->
-        |                 |                   |                   |
-        <----------------------- git pull ------------------------|
-```
-
-The *staging area* is the part that confuses people. It lets you choose exactly which changes go into the next commit: `add` puts changes into the staging area, `commit` saves what is staged as one snapshot. And `git status` tells you what is where.
-
-## The everyday loop
-
-**Live demo: commit and push this lecture.** Let's save the file you are reading to GitHub. Add a blank line at the end of the lecture file (any whitespace will do) and walk it through the whole path:
-
-```bash
-#do not run this on your machine --- this is for me, the owner of the course repo only
-cd ~/workspace/HUJI_52002_Fall_2026
-vi .gitignore                       #let's look at all the files that are ignored by git
-git status                          # which branch? what has changed?
-echo >> lectures/lec02_linux_advanced.qmd   # append one empty line: a change git can see
-git diff --stat                     # which files changed, and by how many lines
-git diff --ignore-blank-lines --stat   # git can also ignore blank lines: our line no longer counts
-git add lectures/lec02_linux_advanced.qmd   # stage just that file
-git commit -m "lec02: whitespace, live git demo"
-git push                            # upload; now refresh the file's page on GitHub
-git log --oneline -n 3              # our commit is on top
-#now I'll open https://github.com/kapelner/HUJI_52002_Fall_2026 and click on "commits" and look at the diff
-```
-
-Note that the commit contains *everything* that was changed in that file, not only the blank line, since git saves whole files, not "the edit we just made". Now let's play on a branch that we throw away afterward:
-
-```bash
-git switch -c lec02-demo        # switch to a new, throw-away branch called lec02-demo to play on (more on branches below)
-echo "first line" > demo_notes.txt  #make a new file
-git status                      # demo_notes.txt is "untracked": git sees it but does not track it
-git add demo_notes.txt          # stage it
-git status                      # now "to be committed"
-git commit -m "add demo notes"  # save the snapshot
-git log --oneline               # the history, one line per commit
-```
-
-Edit the file and look at what changed before you commit it:
-
-```bash
-echo "second line" >> demo_notes.txt
-git diff                        # unstaged changes: working folder vs. the last add
-git add demo_notes.txt
-git diff --staged               # staged changes: what the next commit will contain
-git commit -m "extend demo notes"
-```
-
-A few things to know:
-
-* `git commit -a` (so `git commit -am "msg"` from the setup guide) stages every change to files git **already tracks**, but it skips **new** files. That is why the setup guide runs `git add .` first: it stages new files too.
-* `git add .` stages *everything* in the folder that is not ignored. Run `git status` first. If you don't check the status, then you make mistakes e.g. a 35 MB `covid.csv` ends up in a repository by accident.
-* Write commit messages that say *what and why* ("fix off-by-one in header skip"), not "stuff" or "asdf". You will need to read them in six months from now and you won't remember what you did. Also, if you work with other people, they will need to read them immediately.
-* `git push` sends your new commits to GitHub, the mothership for your code that is indelibly recorded forever (see [my github page](https://github.com/kapelner) and click "arctic") that your teammates can access; `git pull` brings other people's (or your other computer's) commits down. Pull before you start working, and push when you are done.
-
-Looking back at the history:
-
-```bash
-git log --oneline --graph       # compact history; --graph draws the branches
-git log -p demo_notes.txt       # every change ever made to one file
-git show HEAD                   # the last commit in full (HEAD means "where I am now")
-git show HEAD~1                 # the commit before it
-git blame demo_notes.txt        # who wrote each line, and in which commit
-```
-
-## What git should not hold: `.gitignore`
-
-Git is made for code and small text files. It is **not** made for big data: every version of a file is stored forever, and GitHub rejects any single file over 100 MB. Data, results and scratch files are kept out of the repository with a plain-text file called `.gitignore`, which lives in the repository (so it is versioned and shared like any other file). Each line is a pattern for files git should pretend not to see. Our own repo already has one:
-
-```bash
-cat .gitignore                  # includes the scratch/ line you added in Lab 1
-git status --ignored            # also list what is being ignored
-git check-ignore -v scratch/lec02/covid.csv   # WHICH rule ignores this file? (prints the file and line)
-```
-
-The pattern rules are short:
-
-+----------------------+-----------------------------------------------+
-| Line in `.gitignore` | Meaning                                       |
-+:=====================+:==============================================+
-| `# comment`          | a comment; blank lines are skipped            |
-+----------------------+-----------------------------------------------+
-| `*.csv`              | any file ending in `.csv`, in any folder      |
-|                      | (`*` matches any characters, but not `/`)     |
-+----------------------+-----------------------------------------------+
-| `scratch/`           | a folder (the trailing `/`) and everything    |
-|                      | inside it, wherever it is                     |
-+----------------------+-----------------------------------------------+
-| `/data.csv`          | only `data.csv` in the top folder of the repo |
-|                      | (a leading `/` anchors the pattern)           |
-+----------------------+-----------------------------------------------+
-| `**/old/`            | a folder called `old` at any depth            |
-+----------------------+-----------------------------------------------+
-| `!keep.csv`          | an **exception**: do not ignore `keep.csv`,   |
-|                      | even if an earlier line ignored it            |
-+----------------------+-----------------------------------------------+
-
-The last rule is read top to bottom and the last matching line wins, so put exceptions after the pattern they relax:
-
-```bash
-printf '*.log\n*.gz\n!important.log\n' >> .gitignore
-touch a.log important.log data.csv.gz
-git status -s                   # only important.log shows up as untracked
-git check-ignore -v a.log       # shows the rule: .gitignore:NN:*.log
-git add .gitignore && git commit -m "ignore logs and gz files"
-rm a.log important.log data.csv.gz
-```
-
-Three things trip people up:
-
-* **Ignoring does not untrack.** `.gitignore` only affects files git is *not yet* tracking. If you already committed `covid.csv`, adding it to `.gitignore` changes nothing. Tell git to stop tracking it, and leave the file on disk:
-
-```bash
-echo "big data" > big.csv
-git add big.csv                 # oops: a data file gets added...
-git commit -m "oops, committed data"
-echo "big.csv" >> .gitignore    # ...adding it to .gitignore now does nothing: git already tracks it
-git rm --cached big.csv         # stop tracking; the file stays in the folder
-git add .gitignore && git commit -m "stop tracking big.csv"
-rm big.csv                      # (demo only) delete the leftover file
-git status
- ```
-
-The file is still in the *old* commits. Removing a big file from the history is a harder job (a tool such as `git filter-repo`), so it is much better to check `git status` before every commit.
-* **Ignore rules are per repository.** Junk that belongs to *your* machine and editor (`.DS_Store`, `*.swp`, `.vscode/`) can go in a personal global file instead of every project's `.gitignore`: `git config --global core.excludesFile ~/.gitignore_global`.
-* **Empty folders are not tracked.** Git tracks files, not folders. The usual trick to keep an empty folder is a placeholder file inside it, e.g. `data/.gitkeep`, plus the lines `data/*` and `!data/.gitkeep` in `.gitignore`.
-
-## Undoing things, place by place
-
-Which undo you want depends on how far the mistake has travelled. Look at the picture of the places again, find where the mistake is now, and use the matching tool:
-
-+-------------------------+-----------------------------+------------------------------+
-| The mistake is in...    | Use                         | Is it safe?                  |
-+:========================+:============================+:=============================+
-| the working folder      | `git restore file`          | **loses** the edits for good |
-| (edited, not added)     |                             |                              |
-+-------------------------+-----------------------------+------------------------------+
-| the staging area        | `git restore --staged file` | safe, nothing is lost        |
-| (added, not committed)  |                             |                              |
-+-------------------------+-----------------------------+------------------------------+
-| the local repository    | `git reset`,                | safe for you alone; commits  |
-| (committed, not pushed) | `git commit --amend`        | can be recovered with        |
-|                         |                             | `git reflog`                 |
-+-------------------------+-----------------------------+------------------------------+
-| the remote (pushed)     | `git revert`, then          | safe for everybody           |
-|                         | `git push`                  |                              |
-+-------------------------+-----------------------------+------------------------------+
-
-### Out of the staging area
-
-You ran `git add` on something you did not mean to, say a big data file. Unstage it. The file stays in your folder; git just stops planning to commit it:
-
-```bash
-echo "oops" > big.csv
-git add big.csv                     # whoops
-git status                          # "Changes to be committed: new file: big.csv"
-git restore --staged big.csv        # out of the staging area; big.csv is still in the folder
-git status                          # big.csv is "untracked" again
-rm big.csv                          # (demo only)
-```
-
-`git restore --staged .` unstages everything at once. For a file that git already tracks, `--staged` keeps your edits in the folder and only removes them from the next commit, which is also how you split one pile of edits into two commits. (You will see the older spelling `git reset HEAD file` in tutorials; it does the same thing.) Do not confuse this with plain `git restore file`, which throws the *edits* away.
-
-### Out of the local repository
-
-You already ran `git commit`, but have not pushed. Nobody else has seen it, so you are free to rewrite it:
-
-```bash
-# the last commit has the wrong message, or you forgot a file:
-git add forgotten.txt
-git commit --amend -m "better message"      # replaces the last commit with a corrected one
-
-# the last commit should not exist at all:
-echo "oops" > big.csv
-git add big.csv && git commit -m "add big.csv by mistake"
-git reset --soft HEAD~1             # undo the commit, but leave the changes STAGED
-git reset HEAD~1                    # undo the commit, and leave the changes in the folder, unstaged
-git reset --hard HEAD~1             # undo the commit AND delete the changes (dangerous)
-```
-
-`HEAD~1` means "one commit before where I am"; `HEAD~3` goes back three. The three flavors of `git reset` differ only in how far back the changes are taken: `--soft` moves only the branch, the default (`--mixed`) also empties the staging area, and `--hard` also overwrites the working folder.
-
-A very common case in this course is a big file that was committed by accident but not yet pushed. Remove it from the commit itself, so that it never exists in the history that you push:
-
-```bash
-git rm --cached big.csv             # take it out of git's tracking, but keep the file on disk
-git commit --amend --no-edit        # rewrite the last commit without it, keeping the message
-```
-
-(If it was buried a few commits back, `git reset --soft HEAD~3` uncommits the last three, you unstage the file, and you commit again.)
-
-**Safety net: `git reflog`.** Even after `reset --hard`, committed work is almost never gone. Git keeps a private log of everywhere `HEAD` has been, for about three months:
-
-```bash
-git reset --hard HEAD~1             # oops, that threw away a commit we wanted
-git reflog                          # newest first; HEAD@{1} is where we were before the reset
-git reset --hard HEAD@{1}           # go back
-```
-
-This rescues *commits*. It cannot rescue edits that you never added or committed (`git restore file` and `reset --hard` really do lose those), which is why committing early and often, or `git stash`, is cheap insurance.
-
-### Out of the remote (`origin`)
-
-You already ran `git push`. Other people (and your other computers) may have pulled these commits, so rewriting them now would give everybody conflicting histories. The standard, safe undo is a **new commit that cancels the old one**:
-
-```bash
-git log --oneline -n 3              # find the id of the bad commit
-git revert a1b2c3d                  # new commit that undoes commit a1b2c3d (git opens an editor; save and close)
-git push                            # the history only grows, so a plain push works
-git revert HEAD                     # shortcut: undo the very last commit
-```
-
-If you are the **only** person using that branch (say, your own homework branch) you can rewrite the history instead, and then overwrite the remote with a *force* push:
-
-```bash
-git reset --hard HEAD~1             # remove the last commit locally
-git push --force-with-lease         # overwrite origin; refuses if somebody pushed in the meantime
-```
-
-Use `--force-with-lease`, not plain `--force`: it only overwrites what you last saw, so you cannot silently destroy a colleague's commit. Anyone else who already has the old commits must repair their copy, and shared branches such as `main` are often protected against force pushes, so this is the exception.
-
-Two special cases:
-
-* **A branch on origin you want gone:** `git push origin --delete lec02-demo` (your local copy of the branch is separate: `git branch -D`).
-* **A secret or a huge file was pushed.** Deleting it in a later commit does not help; it stays in the history, and anybody can check out the old commit. A pushed password, token or key must be treated as **public**: change it at once, and only then clean the history (with a tool such as `git filter-repo` plus a force push). For a file over 100 MB, GitHub refuses the push, but the bad commit still exists in your *local* repository: fix it locally as above (`reset --soft`, or `rm --cached` plus `--amend`), and push again.
-
-We will not run the remote commands live in the demo, since we never push the demo branches.
-
-## `checkout`: moving around
-
-`git checkout` is the old Swiss-army knife of git. It does several unrelated jobs depending on what you give it:
-
-```bash
-git checkout lec02-demo             # switch to the branch lec02-demo
-git checkout -b lec02-exp           # create the branch lec02-exp and switch to it
-git checkout a1b2c3d                # look at the folder as it was at an old commit
-git checkout -- demo_notes.txt      # throw away uncommitted edits in demo_notes.txt
-```
-
-Because that is confusing, since git 2.23 the jobs were split into two clearer commands: `git switch` (for branches: `git switch lec02-demo`, `git switch -c lec02-exp`) and `git restore` (for files, as above). Both spellings work, and you will see `checkout` in most tutorials and answers online, so you need to read both.
-
-Checking out an old commit puts you in a "detached HEAD" state: you are looking at the past, and anything you commit there belongs to no branch. Look around, and then go back with `git switch -` (back to where you were) or `git switch lec02-demo`.
-
-## Branches and merging
-
-A **branch** is a separate line of commits. It lets you try something (a new analysis, a risky rewrite) without touching the main line, and join it back when it works. (For the demo, `lec02-demo` plays the role of `main`.)
-
-```bash
-git branch                          # list branches (the current one has a *)
-git branch --show-current           # just the name of the branch you are on
-git switch -c lec02-exp             # new branch, and move onto it
-                                    # (= `git branch lec02-exp` to create it, then `git switch lec02-exp`)
-echo "an idea" >> demo_notes.txt
-git commit -m "try an idea" demo_notes.txt
-git switch lec02-demo               # back: demo_notes.txt no longer has the idea!
-git merge lec02-exp                 # bring the experiment's commits in
-git branch -d lec02-exp             # delete a branch you are done with
-```
-
-`git branch` *manages* branches (list, create, rename with `git branch -m new-name`, delete); `git switch` *moves* between them. `git branch -a` also lists the branches that exist on GitHub.
-
-When two branches changed the *same lines*, git cannot choose and reports a **merge conflict**. Make one on purpose:
-
-```bash
-git switch -c lec02-fix
-echo "from fix" > conflict.txt
-git add conflict.txt && git commit -m "fix: add conflict.txt"
-git switch lec02-demo
-echo "from demo" > conflict.txt
-git add conflict.txt && git commit -m "demo: add conflict.txt"
-git merge lec02-fix                 # CONFLICT (add/add) in conflict.txt
-git status                          # "both added: conflict.txt"
-cat conflict.txt
-```
-
-git marks the file for you:
-
-```
-<<<<<<< HEAD
-from demo
-=======
-from fix
->>>>>>> lec02-fix
-```
-
-Everything between `<<<<<<<` and `=======` is your side, and the rest up to `>>>>>>>` is the other branch's side. To resolve it, edit the file into what you want (and delete the three marker lines), then finish the merge:
-
-```bash
-echo "resolved" > conflict.txt      # or edit it by hand
-git add conflict.txt
-git commit                          # git suggests a merge message; save and close the editor
-```
-
-If you panic in the middle of a merge, `git merge --abort` puts everything back as it was before.
-
-## `stash`: put your work aside
-
-You are in the middle of an edit, and you need to switch branches or pull, but git refuses because of your uncommitted changes. You do not want to commit half-finished work. `git stash` puts **all** your uncommitted changes (in our repo that includes the lecture file we are editing!) in a drawer and gives you back a clean folder:
-
-```bash
-echo "half-finished thought" >> demo_notes.txt
-git stash                           # shelve the changes; the folder is clean again
-git status                          # nothing to commit
-git switch lec02-fix                # switching is easy now
-git switch lec02-demo
-git stash list                      # what is in the drawer
-git stash pop                       # take the newest stash out and re-apply it
-git restore demo_notes.txt          # drop the half-finished thought; we only needed it for the demo
-```
-
-Useful variants: `git stash -u` also shelves *new* (untracked) files, which a plain `stash` leaves behind; `git stash push -m "wip: header fix" file1` shelves only `file1` and labels the stash; `git stash apply` re-applies but keeps the stash in the drawer; `git stash drop` throws a stash away.
-
-## `worktree`: a second folder, same repository
-
-`stash` is for a quick interruption. For a longer one (a hotfix while your analysis is half-done, or comparing two versions of a script side by side) a **worktree** is cleaner: a second folder, with its own branch checked out, that shares the same history as your main folder. Nothing in your main folder is disturbed.
-
-+------------+------------------------+----------------------------+------------------+
-| Tool       | What it holds          | Lifetime                   | Shared with      |
-|            |                        |                            | GitHub?          |
-+:===========+:=======================+:===========================+:=================+
-| `stash`    | Uncommitted edits, put | Temporary: meant to be     | Never            |
-|            | in a drawer            | popped within minutes or   |                  |
-|            |                        | hours                      |                  |
-+------------+------------------------+----------------------------+------------------+
-| `worktree` | A second folder with a | As long as the folder      | Only through its |
-|            | branch checked out     | exists; remove it when     | branch           |
-|            |                        | done                       |                  |
-+------------+------------------------+----------------------------+------------------+
-| `branch`   | A line of commits      | Permanent until you delete | Yes, if you push |
-|            |                        | it                         | it               |
-+------------+------------------------+----------------------------+------------------+
-
-: Three ways to set work aside. A worktree is a place to work and needs a branch; a stash is not a commit on any branch.
-
-A rule of thumb:
-
-- **Stash:** "I'll be back in five minutes."
-- **Worktree:** "I need a second workspace while this one stays as it is."
-- **Branch:** "This is a real line of work I'll keep and merge."
-
-```bash
-git worktree add ../lec02-wt -b lec02-wt    # new folder next to the repo, on a new branch
-git worktree list                           # every folder attached to this repo
-cd ../lec02-wt                              # work, commit and run things here as usual
-cd -                                        # back to the main folder: its files never changed
-git worktree remove ../lec02-wt             # done: delete the folder (--force if it has changes)
-git branch -D lec02-wt                      # the branch is separate; delete it too
-```
-
-It is far cheaper than a second `git clone`, since the history is stored only once. Two rules: a branch can be checked out in only one worktree at a time, and always remove a worktree with `git worktree remove` (if you just delete the folder, `git worktree prune` clears the leftover record). Tools like Claude Code use throw-away worktrees to try changes without touching your files.
-
-## Working with GitHub
-
-```bash
-git clone https://github.com/<user>/<repo>.git   # copy a repository (history included) to your computer
-git remote -v                       # where is "origin"?
-git fetch                           # download new commits but do not change your files
-git pull                            # fetch + merge into your current branch
-git push                            # upload your commits
-```
-
-If `git push` is rejected with "failed to push some refs" or "Updates were rejected because the remote contains work that you do not have", somebody (maybe you, from another computer) pushed first. Run `git pull`, fix any conflicts as above, and push again.
-
-## Clean up the demo
-
-```bash
-git stash list                      # should be empty (or only stashes that are really yours)
-git switch main                     # back to the real branch
-git worktree list                   # should show only the main folder
-git branch -D lec02-demo lec02-fix  # -D : delete even though these were never merged into main
-rm -f demo_notes.txt conflict.txt big.csv   # leftovers, if any (normally there are none)
-git status                          # back to exactly where we started
-```
-
-The demo commits disappear with the branches, so nothing from the demo ever reaches GitHub.
-
-## Cheat sheet
-
-| I want to... | Command |
-|--------------|---------|
-| see what changed | `git status`, `git diff` |
-| save my work | `git add .` then `git commit -m "msg"` |
-| share it | `git push` |
-| get others' work | `git pull` |
-| see the history | `git log --oneline --graph` |
-| discard edits to a file | `git restore file` |
-| un-stage a file | `git restore --staged file` |
-| undo a pushed commit | `git revert <id>` |
-| try something on the side | `git switch -c name`, then `git merge name` |
-| set unfinished work aside | `git stash`, later `git stash pop` |
-| work on another branch in a second folder | `git worktree add ../name -b name`, later `git worktree remove ../name` |
-| see which branch I am on | `git branch --show-current` |
-| keep a file out of git | add it to `.gitignore` |
-| stop tracking a big file | `git rm --cached file` and add it to `.gitignore` |
-| find out why a file is ignored | `git check-ignore -v file` |
-
-::: {.callout-tip}
-## Try it
-(1) On a new branch, change `demo_notes.txt` and commit. (2) Switch to another branch, make an uncommitted edit to the same file, and try to switch back or merge. What does git say? Use `git stash` to get out of it, and then `git stash pop`. (3) Which of `restore`, `revert` and `reset` would you use for a mistake that is only in your working folder, for one that you committed but did not push, and for one that you already pushed? (4) Add `*.tmp` to `.gitignore`, create `x.tmp`, and use `git check-ignore -v x.tmp` to see which line ignores it. Then clean up the demo.
-:::

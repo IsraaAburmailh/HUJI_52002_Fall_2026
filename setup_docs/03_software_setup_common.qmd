@@ -11,11 +11,22 @@ format:
 
 Before you start this guide, you should have completed either "02_software_setup_ubuntu.qmd" (for Ubuntu, including Ubuntu inside WSL on Windows) or "02_software_setup_mac.qmd" (for a Mac). Those guides install R, Python, PostgreSQL, Quarto and Positron. This guide installs the R and Python packages we use in the course and sets up Quarto to run R and Python in the same document. From here on, the steps are the same on Ubuntu and on a Mac.
 
+## Convenience Setup
+
+Before we continue, let's set up a convenience: we would like to be able to run lines of bash (linux) in the linux terminal directly from the `qmd` file currently open.
+
+Assuming you're using Positron, we need the ability to send commands from this `qmd` document directly to terminal. (By default this is only enabled for R or Python). So follow these instructions:
+
+Open File → Preferences → Keyboard Shortcuts, or press Ctrl+K and then Ctrl+S.
+In the search box, type "Run Selected Text In Active Terminal".
+Click the pencil icon next to that command, press the keys you want (for example Ctrl+Alt+Enter), then press Enter. You don't want to use Ctrl+Enter as this will conflict with R/Python later.
+
 Run every command in the terminal. A few commands are too long to fit on one line, so they continue on the following lines, either after a `\` or inside quotes. Copy all the lines together and the terminal runs them as one command.
 
-We will add packages to this guide during the semester. The last section explains what to do when that happens.
 
 # Python environment and packages
+
+We will add packages to this guide during the semester. The last section explains what to do when that happens.
 
 Neither Ubuntu nor Homebrew allows `pip` to install packages into the Python they manage (you would get an `externally-managed-environment` error). Instead, create a virtual environment for the course and install packages there:
 
@@ -97,6 +108,18 @@ Rscript -e 'reticulate::py_config()'
 ```
 
 The first line should read `python:` followed by the path of `.venvs/bigdata/bin/python` inside your home directory. Further down, the `numpy:` line should show a folder inside `.venvs/bigdata` as well, which confirms that R sees the Python packages you installed above.
+
+# Ensure the setup is correct
+
+Let's make sure you have R and Python setup correctly. Here are two chunks that should test it. Go to console on the bottom pane and click the "+" sign to start both an R session. Then click the down icon next to plus and click "start another" and choose the python in 
+
+```{r}
+7 + 3 #CTRL+ENTER or click "run cell"
+```
+
+```{python}
+7 + 3 #CTRL+ENTER or click "run cell"
+```
 
 # When the package lists change
 

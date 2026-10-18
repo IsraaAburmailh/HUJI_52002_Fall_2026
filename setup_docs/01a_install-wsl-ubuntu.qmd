@@ -54,7 +54,7 @@ sudo apt update && sudo apt full-upgrade -y
 ```
 
 
-Now let's raise the memory limit. By default WSL uses only part of your computer's RAM. In this course we work with large data, so give it more. Create a text file named `.wslconfig` in your Windows home folder (`C:\Users\<your-username>\.wslconfig`) containing:
+Now let's raise the memory limit. By default WSL uses only part of your computer's RAM. In this course we work with large data, so give it more. Create a text file named `.wslconfig` in your Windows home folder (`C:\Users\<your-username>\.wslconfig`) containing. We want to add the maximum hardware available to WSL. Go to your Windows task manager's performance tab and view your RAM and number of cores. Put those values in below. The below values are just an example. 
 
 ```ini
 [wsl2]
