@@ -725,8 +725,8 @@ How much do these formats cost? Let's measure. Two scripts, one in Python and on
 
 ```bash
 cd ~/workspace/HUJI_52002_Fall_2026/scratch/lec02
-python3 ../../lectures/scripts/lec02/yaml_json_xml.py     # needs the pandas and pyyaml packages
-Rscript ../../lectures/scripts/lec02/yaml_json_xml.R      # needs the data.table, jsonlite, yaml and xml2 packages
+python3 ../../lectures/scripts/lec02/yaml_json_xml.py     # `python3` executes the script in python, needs the pandas and pyyaml packages
+Rscript ../../lectures/scripts/lec02/yaml_json_xml.R      # `Rscript` executes the script in R, needs the data.table, jsonlite, yaml and xml2 packages
 ls -lh covid_python.*  covid_r.*
 ```
 
@@ -734,16 +734,21 @@ The files stay in the folder, so we can use them later: `covid_python.json`, `co
 
 ```{python}
 #| eval: false
-import os, json, yaml
+import json
+import os
+
 import pandas as pd
+import yaml
 
 os.chdir(os.path.expanduser("~/workspace/HUJI_52002_Fall_2026/scratch/lec02"))   # set the working directory
 
 df = pd.read_csv("covid.csv", nrows=25_000, dtype={"fips": str})   # first 25,000 rows, as a DataFrame
 rows = df.to_dict("records")                                       # a list of dicts, one per row
 
-json.dump(rows, open("covid_python.json", "w"))
-yaml.dump(rows, open("covid_python.yml", "w"), Dumper=yaml.CSafeDumper)   # CSafeDumper: PyYAML's fast version
+with open("covid_python.json", "w") as f:                          # `with` closes the file when done
+    json.dump(rows, f)
+with open("covid_python.yml", "w") as f:
+    yaml.dump(rows, f, Dumper=yaml.CSafeDumper)                     # CSafeDumper: PyYAML's fast version
 df.to_xml("covid_python.xml", parser="etree", index=False, root_name="rows", row_name="row")
 ```
 
@@ -782,21 +787,161 @@ What the table says:
 * **Query time depends on the structure in memory more than on the file format.** In R, JSON is read straight into a data frame with one column per field, and 100 queries take 0.02 seconds. When the data is a list of records that the code loops over (YAML or JSON in Python, YAML in R), they take 0.25 to 3.5 seconds. Searching an XML tree is the slowest: 1.0 seconds in Python and 4.1 in R.
 * Don't compare the languages row by row: they use different libraries, and different data structures (a pandas DataFrame or a list of dicts in Python, a `data.table` in R).
 
-Plain text nested formats are large and slow to parse. That is a reason to meet binary formats like Parquet, which we will see soon.
+Plain text nested formats are large and slow to parse. That is a reason for binary formats like Parquet, and databases, which we will see soon.
 
 ```bash
 ls -alh
+less covid_r.json
+less covid_r.xml
+less covid_r.yml
 rm *.{yml,json,xml} #cleanup
 ```
 
 What if you want `grep` and `cut` operations for YML, JSON, XML in bash? `jq` is for JSON, `yq` is for YAML and `xmllint` for XML: these let you filter and extract values from a file at the nix command line. We won't demo them, but you can look them up when you need them.
 
 
+# Open source: a short introduction
+
+Almost every tool in this course (Linux, `bash`, `awk`, `git`, Python, R, `pandas`, Quarto) is **open source**: the source code is public, and a **license** gives everyone the right to use, modify and share it. Without a license the code is legally "all rights reserved", even if it sits on a public GitHub page. So the license is what makes a project open source, and it is worth knowing what the common ones allow.
+
+## How big is it, and how fast did it grow?
+
+* **1983-1991:** the GNU project (free replacements for Unix tools like `awk` and `sed`) and then the Linux kernel (1991) show that volunteers can build an operating system.
+* **1998:** the term "open source" is coined and the Open Source Initiative (OSI) starts approving licenses. Companies begin to take part.
+* **2005-2008:** `git` is written (for Linux itself) and GitHub launches, which makes sharing and contributing easy.
+* **Now:** Sonatype estimated [about 6.6 trillion open source downloads in 2024](https://www.sonatype.com/en/press-releases/sonatypes-10th-annual-state-of-the-software-supply-chain-report), and about 90% of modern software is open source components. 
+
+## The common licenses
+
+Licenses fall into two families. **Permissive** licenses (MIT, BSD, Apache) let you do almost anything, including putting the code inside a closed commercial product, as long as you keep the copyright notice. **Copyleft** licenses (GPL) add a condition: if you distribute software built on GPL code, you must release your version under the GPL too.
+
++------------------+----------------+------------+--------------------------+----------------------------+
+| License          | Family         |  Share of  | Well-known examples      | Scale of use (order of     |
+|                  |                |  licensed  |                          | magnitude)                 |
+|                  |                |  projects  |                          |                            |
++:=================+:===============+:==========:+:=========================+:===========================+
+| MIT              | permissive     |  ~45-65%   | React, Node.js, Rails,   | React: tens of millions of |
+|                  |                |            | Quarto                   | npm downloads per week     |
++------------------+----------------+------------+--------------------------+----------------------------+
+| Apache 2.0       | permissive +   |  ~11-13%   | Kubernetes, Spark,       | `requests`: hundreds of    |
+|                  | patent grant   |            | TensorFlow, `requests`   | millions of PyPI downloads |
+|                  |                |            |                          | per month                  |
++------------------+----------------+------------+--------------------------+----------------------------+
+| BSD (2/3-clause) | permissive     |  a few %   | NumPy, `pandas`,         | NumPy: hundreds of         |
+|                  |                |            | scikit-learn, Django,    | millions of PyPI downloads |
+|                  |                |            | FreeBSD (the operating   | per month; Netflix streams |
+|                  |                |            | system under Netflix's   | to hundreds of millions of |
+|                  |                |            | streaming servers and    | subscribers                |
+|                  |                |            | the PlayStation)         |                            |
++------------------+----------------+------------+--------------------------+----------------------------+
+| GPL v3           | copyleft       |   ~5-17%   | GCC, `bash`, GIMP        | `bash` and GCC ship on     |
+|                  |                |            |                          | nearly every Linux machine |
++------------------+----------------+------------+--------------------------+----------------------------+
+| GPL v2           | copyleft       |   ~4-13%   | Linux kernel, `git`,     | Linux runs most servers    |
+|                  |                |            | WordPress                | and every Android phone    |
++------------------+----------------+------------+--------------------------+----------------------------+
+
+: Approximate share of *licensed* repositories on GitHub (most repositories have no license at all, roughly 80% of the public ones in [one GitLab study](https://checkmarx.com/blog/open-source-licenses-insights-and-metrics/)). The ranges come from [GitHub's 2015 license breakdown](https://github.blog/open-source/open-source-license-usage-on-github-com/) and later studies, which disagree, and the usage column is my rough recollection of public download counts, not a measurement. Nobody can count "users per license": a person using Linux, Python and `git` uses three licenses at once. [RedMonk](https://redmonk.com/sogrady/2026/03/25/open-source-licensing-2026/) tracks the licensing trend each year.
+
+What each license lets you do, and what it asks of you in return:
+
++------------------+-----------+----------+------------+-------+-----------+---------+------------+----------+----------+
+| License          |    Use    |  Modify  | Distribute |  Sell | Keep your |  Patent |  Keep the  |   Mark   |  Share   |
+|                  | privately |          |            |       |  version  |  grant  | copyright  |   your   |   your   |
+|                  |           |          |            |       |   closed  |         |   notice   | changes  |  source  |
++:=================+:=========:+:========:+:==========:+:=====:+:=========:+:=======:+:==========:+:========:+:========:+
+| MIT              |     ✓     |    ✓     |     ✓      |   ✓   |     ✓     |    ✗    |     ✓      |    ✗     |    ✗  |
++------------------+-----------+----------+------------+-------+-----------+---------+------------+----------+----------+
+| Apache 2.0       |     ✓     |    ✓     |     ✓      |   ✓   |     ✓     |    ✓    |     ✓      |    ✓     |    ✗  |
++------------------+-----------+----------+------------+-------+-----------+---------+------------+----------+----------+
+| BSD (2/3-clause) |     ✓     |    ✓     |     ✓      |   ✓   |     ✓     |    ✗    |     ✓      |    ✗     |    ✗  |
++------------------+-----------+----------+------------+-------+-----------+---------+------------+----------+----------+
+| GPL v3           |     ✓     |    ✓     |     ✓      |   ✓   |     ✗     |    ✓    |     ✓      |    ✓     |    ✓  |
++------------------+-----------+----------+------------+-------+-----------+---------+------------+----------+----------+
+| GPL v2           |     ✓     |    ✓     |     ✓      |   ✓   |     ✗     |    ✗    |     ✓      |    ✓     |    ✓  |
++------------------+-----------+----------+------------+-------+-----------+---------+------------+----------+----------+
+
+: ✓ = allowed (first six columns: *you may*; last three: *you must*). "Patent grant" means the authors also give you the right to use any patents covering their code. The 3-clause BSD license additionally forbids using the authors' names to promote your product. This is a simplification and not legal advice; read the actual `LICENSE` file.
+
+**"Sell" means:** charge for copies and services, but pass on all the freedoms. Under the GPL you can charge for a copy, for support or for hosting, but your customers get the source and the same rights you had, including the right to share it or resell it themselves. That is why GPL companies such as Red Hat earn money from support and subscriptions rather than from controlling copies.
+
+## Which license do our tools use?
+
++-------------------+--------------------------+------------------------------------------------------+
+| Project           | License                  | In plain words                                       |
++:==================+:=========================+:=====================================================+
+| Linux             | GPL v2 only (plus a      | Copyleft: changes you distribute must stay open, but |
+|                   | syscall exception)       | programs that merely run on Linux are not covered.   |
++-------------------+--------------------------+------------------------------------------------------+
+| `git`             | GPL v2 only              | Same license as Linux (Linus Torvalds started both). |
++-------------------+--------------------------+------------------------------------------------------+
+| PostgreSQL        | PostgreSQL License       | Permissive, in the spirit of BSD/MIT.                |
++-------------------+--------------------------+------------------------------------------------------+
+| DuckDB            | MIT                      | Permissive.                                          |
++-------------------+--------------------------+------------------------------------------------------+
+| R                 | GPL v2 or v3             | Copyleft. Individual CRAN packages choose their own  |
+|                   |                          | license.                                             |
++-------------------+--------------------------+------------------------------------------------------+
+| Python            | PSF License (Python      | Permissive and GPL-compatible.                       |
+|                   | Software Foundation)     |                                                      |
++-------------------+--------------------------+------------------------------------------------------+
+| `pandas`, NumPy   | BSD 3-clause             | Permissive.                                          |
++-------------------+--------------------------+------------------------------------------------------+
+| Quarto            | MIT                      | Permissive: this is the tool that renders these      |
+|                   |                          | slides.                                              |
++-------------------+--------------------------+------------------------------------------------------+
+| DBeaver Community | Apache 2.0               | Permissive. The company also sells paid editions     |
+|                   |                          | with extra features, an example of the "open core"   |
+|                   |                          | business model.                                      |
++-------------------+--------------------------+------------------------------------------------------+
+| Positron          | Elastic License 2.0      | Source-available, but **not** open source by the OSI |
+|                   | (ELv2)                   | definition: you can read, use and modify it, but     |
+|                   |                          | ELv2 forbids, e.g., offering it to others as a       |
+|                   |                          | hosted service. It is built on VS Code's open source |
+|                   |                          | core (MIT).                                          |
++-------------------+--------------------------+------------------------------------------------------+
+
+: Check any project yourself: the license is usually in a file called `LICENSE` or `COPYING` in the repository (`ls`, `head LICENSE`), and GitHub shows it on the repository page.
+
 # Version control with `git`
+
+## Introduction
 
 The setup guide explains the `git add` - `git commit` - `git push` idiom to hand in your labs. In this unit we look at what those commands actually do, and at the handful of other commands that you will likely use if you pursue data science / engineering.
 
 `git` keeps a complete history of a folder of files. Every saved snapshot is called a **commit**; it has an author, a date, a message, and a short identifying alphanumeric code e.g., `a1b2c3d`. Nothing in a commit is ever silently overwritten, which is why `git` is such a good safety net.
+
+`git` is not the only version control system, but it is the dominant one by far. Nobody counts "worldwide users" of a free tool exactly, so the best we have is the share of developers who say they use each one in surveys (people can name several, so shares can add to more than 100%).
+
+| System           | Born | Model       | Share of developers (approx.) | Where you meet it                         |
+|:-----------------|-----:|:------------|------------------------------:|:------------------------------------------|
+| `git`            | 2005 | distributed |                          ~94% | Almost everything, including `git` itself |
+| Subversion (SVN) | 2000 | centralized |                           ~5% | Older companies and some academic groups  |
+| Perforce         | 1995 | centralized |       a few % (no clean data) | Game studios, huge binary assets          |
+| Mercurial (`hg`) | 2005 | distributed |                           ~1% | Legacy projects (Mozilla moved to git)    |
+| CVS              | 1990 | centralized |    ~0% (legacy projects only) | Museum piece; SVN was built to replace it |
+
+: Version control systems, ordered by share of developers. Survey figures are approximate and the 2025 numbers are secondhand (via [RhodeCode's summary](https://rhodecode.com/insights) of the Stack Overflow survey); Perforce and CVS have no reliable current figure, so their order is a rough judgement from [a Gartner legacy-project poll](https://www.gartner.com/peer-community/poll/what-version-control-system-vcs-are-you-using-for-legacy-projects).
+
+`git` is the tool; GitHub is a website/company that hosts `git` repositories (which are called the "remotes" e.g. `origin`, `master`, `main`) and manages "pull requests", issue tracking and so on. Here is a list of places where `git` is served:
+
+| Host                  | Owner     | Accounts (approx.) | Notes                                                   |
+|:----------------------|:----------|-------------------:|:--------------------------------------------------------|
+| GitHub                | Microsoft |              ~180M | Largest by far; where our course repo lives             |
+| Self-hosted servers   | companies |    ~20-40M (guess) | Private servers; overlaps other rows                    |
+| GitLab                | GitLab    |  ~30M (unreliable) | Popular to self-host inside companies                   |
+| Bitbucket             | Atlassian |               ~15M | Integrates with Jira; dropped Mercurial support         |
+| Azure DevOps, others  | various   |   no public figure | Common in Microsoft shops, SourceForge is the old-timer |
+
+: Git hosting services, ordered by accounts. GitHub's figure is from its 2025 Octoverse report (via [secondary coverage](https://www.getpanto.ai/blog/github-statistics)); Bitbucket's is Atlassian's 2025 "developers" count; GitLab's is an undated third-party estimate. Accounts are not active users, and one person may hold several. The self-hosted row is my own order-of-magnitude guess, not a measurement: no one publishes a total, so it assumes a large share of GitLab's accounts and most of Bitbucket's enterprise users sit on company-run servers. Private repos kept on GitHub itself are not counted. 
+
+GitHub is the biggest venue for open source software in the world. Most of the projects we met in the previous section keep their code there: [Python](https://github.com/python/cpython), [R](https://github.com/wch/r-source) (a mirror, see below), [Linux](https://github.com/torvalds/linux) (also a mirror), [`pandas`](https://github.com/pandas-dev/pandas), [`NumPy`](https://github.com/numpy/numpy), [`TensorFlow`](https://github.com/tensorflow/tensorflow), [`PyTorch`](https://github.com/pytorch/pytorch), [`Kubernetes`](https://github.com/kubernetes/kubernetes), [`VS Code`](https://github.com/microsoft/vscode) and [Quarto](https://github.com/quarto-dev/quarto-cli), [`git`](https://github.com/git/git) itself, along with millions of smaller libraries. Even projects that develop elsewhere keep a mirror on GitHub, such as the Linux kernel (developed through mailing lists), R (developed in Subversion) and [PostgreSQL](https://github.com/postgres/postgres) (which runs its own git server), because that is where people look for code. It became the default for three reasons:
+
+* **Network effect:** with about 180 million developers, a project on GitHub is where its potential users and contributors already are.
+* **Low friction:** anyone can **fork** (copy) a project, change it and propose the change back with a **pull request**, with no permission needed. Issues, discussion and automated testing live on the same page.
+* **Visibility:** search, **stars** and your commit history on your profile make GitHub a public CV, and employers often look at it. In a 2017 [HackerRank survey](https://www.hackerrank.com/research/developer-skills/2018), most hiring managers said they look for proven skill such as previous work and projects/GitHub, and in interviews with employers ([Marlow and Dabbish, 2013](https://www.researchgate.net/publication/262248832_Activity_traces_and_signals_in_software_developer_recruitment_and_hiring)) they said they trust visible activity more than résumé claims. Microsoft bought GitHub in 2018 for about $7.5 billion likely because they wanted to buy the network of all the developers.
+
+That is also why you hand in your labs through it: the habits you build in this course (commit, push, pull request) are the ones used by open source projects everywhere and companies everywhere. You are learning the standard for any sort of software engineering and data science.
 
 ::: {.callout-warning}
 ## Demo rules
@@ -827,7 +972,8 @@ The *staging area* is the part that confuses people. It lets you choose exactly 
 ```bash
 #do not run this on your machine --- this is for me, the owner of the course repo only
 cd ~/workspace/HUJI_52002_Fall_2026
-git status                          # which branch? what has changed? (the lecture file is "modified")
+vi .gitignore                       #let's look at all the files that are ignored by git
+git status                          # which branch? what has changed?
 echo >> lectures/lec02_linux_advanced.qmd   # append one empty line: a change git can see
 git diff --stat                     # which files changed, and by how many lines
 git diff --ignore-blank-lines --stat   # git can also ignore blank lines: our line no longer counts
@@ -841,8 +987,8 @@ git log --oneline -n 3              # our commit is on top
 Note that the commit contains *everything* that was changed in that file, not only the blank line, since git saves whole files, not "the edit we just made". Now let's play on a branch that we throw away afterward:
 
 ```bash
-git switch -c lec02-demo        # a throw-away branch to play on (more on branches below)
-echo "first line" > demo_notes.txt
+git switch -c lec02-demo        # switch to a new, throw-away branch called lec02-demo to play on (more on branches below)
+echo "first line" > demo_notes.txt  #make a new file
 git status                      # demo_notes.txt is "untracked": git sees it but does not track it
 git add demo_notes.txt          # stage it
 git status                      # now "to be committed"
@@ -863,9 +1009,9 @@ git commit -m "extend demo notes"
 A few things to know:
 
 * `git commit -a` (so `git commit -am "msg"` from the setup guide) stages every change to files git **already tracks**, but it skips **new** files. That is why the setup guide runs `git add .` first: it stages new files too.
-* `git add .` stages *everything* in the folder that is not ignored. Run `git status` first. This is how a 35 MB `covid.csv` ends up in a repository by accident.
-* Write commit messages that say *what and why* ("fix off-by-one in header skip"), not "stuff" or "asdf". You will read them in six months.
-* `git push` sends your new commits to GitHub; `git pull` brings other people's (or your other computer's) commits down. Pull before you start working, and push when you are done.
+* `git add .` stages *everything* in the folder that is not ignored. Run `git status` first. If you don't check the status, then you make mistakes e.g. a 35 MB `covid.csv` ends up in a repository by accident.
+* Write commit messages that say *what and why* ("fix off-by-one in header skip"), not "stuff" or "asdf". You will need to read them in six months from now and you won't remember what you did. Also, if you work with other people, they will need to read them immediately.
+* `git push` sends your new commits to GitHub, the mothership for your code that is indelibly recorded forever (see [my github page](https://github.com/kapelner) and click "arctic") that your teammates can access; `git pull` brings other people's (or your other computer's) commits down. Pull before you start working, and push when you are done.
 
 Looking back at the history:
 
@@ -889,14 +1035,25 @@ git check-ignore -v scratch/lec02/covid.csv   # WHICH rule ignores this file? (p
 
 The pattern rules are short:
 
-| Line in `.gitignore` | Meaning |
-|----------------------|---------|
-| `# comment` | a comment; blank lines are skipped |
-| `*.csv` | any file ending in `.csv`, in any folder (`*` matches any characters, but not `/`) |
-| `scratch/` | a folder (the trailing `/`) and everything inside it, wherever it is |
-| `/data.csv` | only `data.csv` in the top folder of the repo (a leading `/` anchors the pattern) |
-| `**/old/` | a folder called `old` at any depth |
-| `!keep.csv` | an **exception**: do not ignore `keep.csv`, even if an earlier line ignored it |
++----------------------+-----------------------------------------------+
+| Line in `.gitignore` | Meaning                                       |
++:=====================+:==============================================+
+| `# comment`          | a comment; blank lines are skipped            |
++----------------------+-----------------------------------------------+
+| `*.csv`              | any file ending in `.csv`, in any folder      |
+|                      | (`*` matches any characters, but not `/`)     |
++----------------------+-----------------------------------------------+
+| `scratch/`           | a folder (the trailing `/`) and everything    |
+|                      | inside it, wherever it is                     |
++----------------------+-----------------------------------------------+
+| `/data.csv`          | only `data.csv` in the top folder of the repo |
+|                      | (a leading `/` anchors the pattern)           |
++----------------------+-----------------------------------------------+
+| `**/old/`            | a folder called `old` at any depth            |
++----------------------+-----------------------------------------------+
+| `!keep.csv`          | an **exception**: do not ignore `keep.csv`,   |
+|                      | even if an earlier line ignored it            |
++----------------------+-----------------------------------------------+
 
 The last rule is read top to bottom and the last matching line wins, so put exceptions after the pattern they relax:
 
@@ -913,17 +1070,18 @@ Three things trip people up:
 
 * **Ignoring does not untrack.** `.gitignore` only affects files git is *not yet* tracking. If you already committed `covid.csv`, adding it to `.gitignore` changes nothing. Tell git to stop tracking it, and leave the file on disk:
 
-  ```bash
-  echo "big data" > big.csv
-  git add big.csv                 # oops: a data file gets added...
-  git commit -m "oops, committed data"
-  echo "big.csv" >> .gitignore    # ...adding it to .gitignore now does nothing: git already tracks it
-  git rm --cached big.csv         # stop tracking; the file stays in the folder
-  git add .gitignore && git commit -m "stop tracking big.csv"
-  rm big.csv                      # (demo only) delete the leftover file
-  ```
+```bash
+echo "big data" > big.csv
+git add big.csv                 # oops: a data file gets added...
+git commit -m "oops, committed data"
+echo "big.csv" >> .gitignore    # ...adding it to .gitignore now does nothing: git already tracks it
+git rm --cached big.csv         # stop tracking; the file stays in the folder
+git add .gitignore && git commit -m "stop tracking big.csv"
+rm big.csv                      # (demo only) delete the leftover file
+git status
+ ```
 
-  The file is still in the *old* commits. Removing a big file from the history is a harder job (a tool such as `git filter-repo`), so it is much better to check `git status` before every commit.
+The file is still in the *old* commits. Removing a big file from the history is a harder job (a tool such as `git filter-repo`), so it is much better to check `git status` before every commit.
 * **Ignore rules are per repository.** Junk that belongs to *your* machine and editor (`.DS_Store`, `*.swp`, `.vscode/`) can go in a personal global file instead of every project's `.gitignore`: `git config --global core.excludesFile ~/.gitignore_global`.
 * **Empty folders are not tracked.** Git tracks files, not folders. The usual trick to keep an empty folder is a placeholder file inside it, e.g. `data/.gitkeep`, plus the lines `data/*` and `!data/.gitkeep` in `.gitignore`.
 
@@ -931,12 +1089,22 @@ Three things trip people up:
 
 Which undo you want depends on how far the mistake has travelled. Look at the picture of the places again, find where the mistake is now, and use the matching tool:
 
-| The mistake is in... | Use | Is it safe? |
-|----------------------|-----|-------------|
-| the working folder (edited, not added) | `git restore file` | **loses** the edits for good |
-| the staging area (added, not committed) | `git restore --staged file` | safe, nothing is lost |
-| the local repository (committed, not pushed) | `git reset`, `git commit --amend` | safe for you alone; commits can be recovered with `git reflog` |
-| the remote (pushed) | `git revert`, then `git push` | safe for everybody |
++-------------------------+-----------------------------+------------------------------+
+| The mistake is in...    | Use                         | Is it safe?                  |
++:========================+:============================+:=============================+
+| the working folder      | `git restore file`          | **loses** the edits for good |
+| (edited, not added)     |                             |                              |
++-------------------------+-----------------------------+------------------------------+
+| the staging area        | `git restore --staged file` | safe, nothing is lost        |
+| (added, not committed)  |                             |                              |
++-------------------------+-----------------------------+------------------------------+
+| the local repository    | `git reset`,                | safe for you alone; commits  |
+| (committed, not pushed) | `git commit --amend`        | can be recovered with        |
+|                         |                             | `git reflog`                 |
++-------------------------+-----------------------------+------------------------------+
+| the remote (pushed)     | `git revert`, then          | safe for everybody           |
+|                         | `git push`                  |                              |
++-------------------------+-----------------------------+------------------------------+
 
 ### Out of the staging area
 
@@ -1039,13 +1207,17 @@ A **branch** is a separate line of commits. It lets you try something (a new ana
 
 ```bash
 git branch                          # list branches (the current one has a *)
+git branch --show-current           # just the name of the branch you are on
 git switch -c lec02-exp             # new branch, and move onto it
+                                    # (= `git branch lec02-exp` to create it, then `git switch lec02-exp`)
 echo "an idea" >> demo_notes.txt
 git commit -m "try an idea" demo_notes.txt
 git switch lec02-demo               # back: demo_notes.txt no longer has the idea!
 git merge lec02-exp                 # bring the experiment's commits in
 git branch -d lec02-exp             # delete a branch you are done with
 ```
+
+`git branch` *manages* branches (list, create, rename with `git branch -m new-name`, delete); `git switch` *moves* between them. `git branch -a` also lists the branches that exist on GitHub.
 
 When two branches changed the *same lines*, git cannot choose and reports a **merge conflict**. Make one on purpose:
 
@@ -1098,6 +1270,45 @@ git restore demo_notes.txt          # drop the half-finished thought; we only ne
 
 Useful variants: `git stash -u` also shelves *new* (untracked) files, which a plain `stash` leaves behind; `git stash push -m "wip: header fix" file1` shelves only `file1` and labels the stash; `git stash apply` re-applies but keeps the stash in the drawer; `git stash drop` throws a stash away.
 
+## `worktree`: a second folder, same repository
+
+`stash` is for a quick interruption. For a longer one (a hotfix while your analysis is half-done, or comparing two versions of a script side by side) a **worktree** is cleaner: a second folder, with its own branch checked out, that shares the same history as your main folder. Nothing in your main folder is disturbed.
+
++------------+------------------------+----------------------------+------------------+
+| Tool       | What it holds          | Lifetime                   | Shared with      |
+|            |                        |                            | GitHub?          |
++:===========+:=======================+:===========================+:=================+
+| `stash`    | Uncommitted edits, put | Temporary: meant to be     | Never            |
+|            | in a drawer            | popped within minutes or   |                  |
+|            |                        | hours                      |                  |
++------------+------------------------+----------------------------+------------------+
+| `worktree` | A second folder with a | As long as the folder      | Only through its |
+|            | branch checked out     | exists; remove it when     | branch           |
+|            |                        | done                       |                  |
++------------+------------------------+----------------------------+------------------+
+| `branch`   | A line of commits      | Permanent until you delete | Yes, if you push |
+|            |                        | it                         | it               |
++------------+------------------------+----------------------------+------------------+
+
+: Three ways to set work aside. A worktree is a place to work and needs a branch; a stash is not a commit on any branch.
+
+A rule of thumb:
+
+- **Stash:** "I'll be back in five minutes."
+- **Worktree:** "I need a second workspace while this one stays as it is."
+- **Branch:** "This is a real line of work I'll keep and merge."
+
+```bash
+git worktree add ../lec02-wt -b lec02-wt    # new folder next to the repo, on a new branch
+git worktree list                           # every folder attached to this repo
+cd ../lec02-wt                              # work, commit and run things here as usual
+cd -                                        # back to the main folder: its files never changed
+git worktree remove ../lec02-wt             # done: delete the folder (--force if it has changes)
+git branch -D lec02-wt                      # the branch is separate; delete it too
+```
+
+It is far cheaper than a second `git clone`, since the history is stored only once. Two rules: a branch can be checked out in only one worktree at a time, and always remove a worktree with `git worktree remove` (if you just delete the folder, `git worktree prune` clears the leftover record). Tools like Claude Code use throw-away worktrees to try changes without touching your files.
+
 ## Working with GitHub
 
 ```bash
@@ -1115,6 +1326,7 @@ If `git push` is rejected with "failed to push some refs" or "Updates were rejec
 ```bash
 git stash list                      # should be empty (or only stashes that are really yours)
 git switch main                     # back to the real branch
+git worktree list                   # should show only the main folder
 git branch -D lec02-demo lec02-fix  # -D : delete even though these were never merged into main
 rm -f demo_notes.txt conflict.txt big.csv   # leftovers, if any (normally there are none)
 git status                          # back to exactly where we started
@@ -1136,6 +1348,8 @@ The demo commits disappear with the branches, so nothing from the demo ever reac
 | undo a pushed commit | `git revert <id>` |
 | try something on the side | `git switch -c name`, then `git merge name` |
 | set unfinished work aside | `git stash`, later `git stash pop` |
+| work on another branch in a second folder | `git worktree add ../name -b name`, later `git worktree remove ../name` |
+| see which branch I am on | `git branch --show-current` |
 | keep a file out of git | add it to `.gitignore` |
 | stop tracking a big file | `git rm --cached file` and add it to `.gitignore` |
 | find out why a file is ignored | `git check-ignore -v file` |

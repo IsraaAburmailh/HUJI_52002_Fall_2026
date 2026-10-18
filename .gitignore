@@ -101,3 +101,7 @@ scratch/
 *.pyg
 _minted*/
 *.fmt
+
+# Quarto render caches and temporary notebooks
+.quarto/
+*.quarto_ipynb

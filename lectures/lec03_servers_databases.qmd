@@ -60,10 +60,6 @@ rsync -avn data/ user@server:~/data/    # -n : dry run, only show the plan
 `rsync -av data/ dest/` copies the *contents* of `data` into `dest`. Without the slash, `rsync -av data dest/` creates `dest/data`. The same is true on the destination side. When in doubt, add `-n` first.
 :::
 
-## `tmux`: a terminal that survives disconnects
-
-
-
 # Databases: when a CSV is not enough
 
 A CSV is a fine way to *ship* data, and the tools from the last two lectures are fine for a quick look. But as soon as you ask many questions of the same data, or change it, or share it, the file starts to hurt. In this unit we feel the pain first, and then fix it with a **database**: a program that stores data in a structured way and answers questions about it quickly. We will use **PostgreSQL** ("Postgres"), which you installed in the setup guide.
