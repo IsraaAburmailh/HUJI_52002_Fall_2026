@@ -94,13 +94,13 @@ mkdir workspace
 cd workspace
 ```
 
-We now setup your own security keys. This can be done by typing in the following command
+We now setup your own security keys. Github authenticates you using an SSH key pair: a *private* key that stays on your computer and a *public* key that you give to github. In this class we use the **Ed25519** key type. It is a modern public-key signature algorithm (elliptic-curve cryptography) that is considered very secure, produces short keys that are easy to copy and paste, is fast, and is supported by github, so it is the type github currently recommends. You may see older tutorials using RSA keys; you do not need those. This can be done by typing in the following command
 
 ```bash
 ssh-keygen -t ed25519 -C "type your email address here"
 ```
 
-I use no password so I just press enter three times now. This is more convenient, but less secure as if someone gains access to your laptop, they can impersonate your github account and whatever else uses these keys. If the key creation is successful, you should see something like the following message:
+The command will ask where to save the key (just press enter to accept the default, `~/.ssh/id_ed25519`) and then ask for a passphrase twice. A passphrase encrypts your private key on disk so that it is useless to anyone who steals the file. In this class we use **no passphrase** so just press enter three times in total. This is more convenient since you will never be prompted for a password when you push and pull, but less secure as if someone gains access to your laptop, they can impersonate your github account and whatever else uses these keys. Never share your private key (`id_ed25519`) with anyone or upload it anywhere; only the public key (`id_ed25519.pub`) is ever shared. If the key creation is successful, you should see something like the following message:
 
 ![](class_setup_media/image1.png){width="6.5in"}
 
@@ -137,7 +137,7 @@ ssh-ed25519 AAAC3NzaC1lZDI1NTE5AAAAIK0wmN/Cr3JXqmLW7u+g9pTh+wyqDHpSQEIQczXkVx9q
   kapelner@gmail.com
 ```
 
-There is no risk sharing your public key. It can be "public"! It's how people give you access to services.
+There is no risk sharing your public key. It can be "public"! It's how people give you access to services. A good way to think about it: your public key is a *lock* and your private key is the one *physical key* that opens it. Anyone can install a lock made for your key on their door (github is doing exactly this when you paste your public key into it), but only you can open it because only you hold the physical key. Knowing what the lock looks like doesn't let anyone make the key. (The metaphor only goes so far. In real SSH, github doesn't "open" anything. It sends a challenge, and your private key signs it to prove you hold the key.)
 
 Now you need to copy that text ***exactly*** and paste it into the "key" field so the final screen should look like this:
 
