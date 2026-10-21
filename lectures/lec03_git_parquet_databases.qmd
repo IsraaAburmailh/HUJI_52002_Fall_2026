@@ -19,7 +19,7 @@ This section will be on the homework but I won't put it on the exams.
 
 The setup guide explains the `git add` - `git commit` - `git push` idiom to hand in your labs. In this unit we look at what those commands actually do, and at the handful of other commands that you will likely use if you pursue data science / engineering.
 
-`git` keeps a complete history of a folder of files. Every saved snapshot is called a **commit**; it has an author, a date, a message, and a short identifying alphanumeric code e.g., `a1b2c3d`. Nothing in a commit is ever silently overwritten, which is why `git` is such a good safety net.
+`git` keeps a complete history of a folder of files (hence why it's great for teams working on text files housing code, i.e., for "version control"). Every saved snapshot is called a **commit**; it has an author, a date, a message, and a short identifying alphanumeric code e.g., `a1b2c3d`. Nothing in a commit is ever silently overwritten, which is why `git` is such a good safety net.
 
 `git` is not the only version control system, but it is the dominant one by far. Nobody counts "worldwide users" of a free tool exactly, so the best we have is the share of developers who say they use each one in surveys (people can name several, so shares can add to more than 100%).
 
@@ -33,7 +33,7 @@ The setup guide explains the `git add` - `git commit` - `git push` idiom to hand
 
 : Version control systems, ordered by share of developers. Survey figures are approximate and the 2025 numbers are secondhand (via [RhodeCode's summary](https://rhodecode.com/insights) of the Stack Overflow survey); Perforce and CVS have no reliable current figure, so their order is a rough judgement from [a Gartner legacy-project poll](https://www.gartner.com/peer-community/poll/what-version-control-system-vcs-are-you-using-for-legacy-projects).
 
-`git` is the tool; GitHub is a website/company that hosts `git` repositories (which are called the "remotes" e.g. `origin`, `master`, `main`) and manages "pull requests", issue tracking and so on. Here is a list of places where `git` is served:
+`git` is the tool; GitHub is a website/company (owned by Microsoft) that hosts `git` repositories (which are called the "remotes" and are usually named `origin`, `master`, `main`). GitHub also manages "pull requests", issue tracking and so on. Here is a list of places where `git` is served:
 
 | Host                  | Owner     | Accounts (approx.) | Notes                                                   |
 |:----------------------|:----------|-------------------:|:--------------------------------------------------------|
@@ -80,9 +80,9 @@ The *staging area* is the part that confuses people. It lets you choose exactly 
 **Live demo: commit and push this lecture.** Let's save the file you are reading to GitHub. Add a blank line at the end of the lecture file (any whitespace will do) and walk it through the whole path:
 
 ```bash
-#do not run this on your machine --- this is for me, the owner of the course repo only
+#do not run the commands in this chunk on your machine --- this is for me, the owner of the course repo only
 cd ~/workspace/HUJI_52002_Fall_2026
-vi .gitignore                       #let's look at all the files that are ignored by git
+vi .gitignore                       # let's look at all the files that are ignored by git
 git status                          # which branch? what has changed?
 echo >> lectures/lec02_linux_advanced.qmd   # append one empty line: a change git can see
 git diff --stat                     # which files changed, and by how many lines

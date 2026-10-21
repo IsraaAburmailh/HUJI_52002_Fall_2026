@@ -219,7 +219,7 @@ Write **one** `ls` command, using wildcards, for each goal:
 
 Starting from `labs/01/scratch`, write a `find` command for each of these. The first argument is where to look.
 
-* (a) every `.csv` file anywhere under `labs/01/scratch`
+* (a) every `.csv` file anywhere under `labs/01/scratch` ("under" means that directory and everything beneath it at any depth: its subdirectories, their subdirectories, and so on.)
 * (b) files bigger than 10 MB under `labs/01/scratch` (which file do you expect?)
 * (c) empty files (and folders) in `labs/01/scratch/wild`
 * (d) regular files in `labs/01/scratch/wild` whose name does *not* end in `.csv`
