@@ -90,7 +90,7 @@ Then run `git status` from your repository and ensure the downloaded file does n
 Create the folders `project/data`, `project/scripts` and `project/results` with one command (not merely one line separated with ;'s).
 
 ```bash
-#TODO [command <1pt>]
+mkdir -p project/data project/scripts project/results
 ```
 
 `touch`, `cp` and `mv` look simple, but each can surprise you. Starting in `labs/01/scratch`, put some content into the folders you just made:
@@ -110,8 +110,7 @@ ls -l --full-time project/data/a.csv
 cat project/data/a.csv
 ```
 
-#TODO [what does `touch` change about `a.csv`, and what does it leave alone? <1pt>]
-
+`touch` changes the access and modification timestamps of `a.csv`, but leaves the file's contents, size, and permissions unchanged.
 Let's examine copying onto a file that already exists:
 
 ```bash
@@ -119,8 +118,8 @@ cp project/data/a.csv project/data/b.csv
 cat project/data/b.csv
 ```
 
-#TODO [what does `b.csv` contain afterward? Does `cp` warn you? <1pt>]
-#TODO [which `cp` option could've saved the day here? <1pt>]
+`b.csv` contains "id,value" (the contents of `a.csv`). No, `cp` overwrites `b.csv` silently without any warning.
+The interactive option: `cp -i`
 
 Let's examine moving versus copying. `ls -i` prints a file's *inode number*, the number the filesystem uses to identify the file itself, independent of its name.
 
@@ -132,9 +131,9 @@ cp project/results/a.csv project/data/a.csv
 ls -i project/data/a.csv
 ```
 
-#TODO [which of the three inode numbers are equal? <1pt>]
-#TODO [why does `mv` keep the inode number but `cp` gives a new one? <2pts>] 
-#TODO [based on the previous answer, which would be faster on a 10 GB file on the same disk, and why? <1pt>]
+The first two inode numbers (before move and after move with `mv`) are equal. The third one (after `cp`) is different.
+`mv` only updates the directory pointer/path without moving the actual data blocks on disk. `cp` allocates new data blocks on disk and writes a new copy of the file, generating a new inode number.
+`mv` is drastically faster because it only modifies directory metadata in milliseconds, whereas `cp` must read and write all 10 GB of data on the disk.
 
 Let's examine moving more:
 
@@ -144,9 +143,9 @@ ls -l project
 mv project/data/b.csv project/old/
 ```
 
-#TODO [after the first line, is `project/bin` a file or a folder? What happens on the third line? <1pt>]
-#TODO [how can you tell from `ls -l` whether `bin` is a file or a folder? <1pt>]
-#TODO [why did the third line fail when the first one did not, and why is ending a destination folder with `/` a good habit? <2pts>]
+`project/bin` is a regular file (renamed from `run.sh`). On the third line, `mv` fails with an error ("No such file or directory") because `project/old/` directory does not exist.
+By checking the first character of the permissions string in `ls -l`: `-` indicates a regular file, while `d` indicates a directory.
+The third line failed because the trailing `/` explicitly instructs `mv` that the destination MUST be an existing directory. Ending destination paths with `/` is a good safety habit to prevent accidentally renaming a file when you intended to move it into a directory.
 
 Let's examine copying several files at once:
 
@@ -156,7 +155,7 @@ ls project/results
 cp project/data/a.csv project/data/b.csv project/bin
 ```
 
-#TODO [what happens when you give n arguments to `cp`? <1pt>]
+The first n-1 arguments are treated as source files/directories to copy, and the last (n-th) argument MUST be an existing directory where all sources will be placed.
 
 Copying a folder, twice:
 
@@ -167,7 +166,7 @@ cp -r project project_backup
 ls project_backup
 ```
 
-#TODO [why did the second `cp -r` give a different result than the first? <2pts>]
+In the first `cp -r`, `project_backup` did not exist, so `cp` created it as a copy. In the second `cp -r`, `project_backup` already existed, so `cp` copied the `project` folder INSIDE `project_backup`, resulting in `project_backup/project/`.
 
 
 
@@ -178,7 +177,7 @@ ls project_backup
 Write **one** command that lists *all* items in `labs/01/scratch` (including those in subdirectories and hidden items).
 
 ```bash
-#TODO [command <1pt>]
+find .
 ```
 
 
@@ -188,7 +187,7 @@ We would like to repeat this but now also print the permissions and the size and
 find . -mindepth 1 | ls
 ```
 
-#TODO [explain why this didn't work as planned <2pts>]
+`ls` does not read file names from standard input (stdin) via a pipe. Instead, `ls` ignores the output passed from `find` and simply lists the contents of the current working directory.
 
 Set up a small practice folder:
 
@@ -208,11 +207,11 @@ Write **one** `ls` command, using wildcards, for each goal:
 * (e) everything in the folder *including* the hidden file.
 
 ```bash
-#TODO [command (a) <1pt>]
-#TODO [command (b) <1pt>]
-#TODO [command (c) <1pt>]
-#TODO [command (d) <1pt>]
-#TODO [command (e) <1pt>]
+ls *.csv
+ls data_?.csv
+ls report_202[01].*
+ls data_[!1]*.csv
+ls -a
 ```
 
 Starting from `labs/01/scratch`, write a `find` command for each of these. The first argument is where to look.
@@ -226,16 +225,16 @@ Starting from `labs/01/scratch`, write a `find` command for each of these. The f
 * (g) run `wc -c` on every `.csv` file in `labs/01/scratch/wild` using `-exec ... {} \;` (the `{}` stands for the file name)
 
 ```bash
-#TODO [command (a) <1pt>]
-#TODO [command (b) <1pt>]
-#TODO [command (c) <1pt>]
-#TODO [command (d) <1pt>]
-#TODO [command (e) <1pt>]
-#TODO [command (f) <1pt>]
-#TODO [command (g) <2pts>]
+find . -type f -name "*.csv"
+find . -size +10M
+find wild -empty
+find wild -type f ! -name "*.csv"
+find wild -type f \\( -name "*.csv" -o -name "*.md" \\)
+find . -mmin -60
+find wild -name "*.csv" -exec wc -c {} \;
 ```
 
-#TODO [(b) which file do you expect? <1pt>]
+covid.csv
 
 # Part 3: Redirects and streams
 
