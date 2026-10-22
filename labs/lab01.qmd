@@ -35,8 +35,7 @@ export my_52002_repo="$HOME/workspace/HUJI_52002_Fall_2026"
 Every time you open a new terminal you need to run this. Best to put it inside your `.bashrc` so you will always have access to this variable.
 
 ```bash
-#TODO [command to add to .bashrc <1pt>]
-```
+echo 'export my_52002_repo="$HOME/workspace/HUJI_52002_Fall_2026"' >> ~/.bashrc```
 
 Create a directory for this assignment.
 
@@ -60,14 +59,13 @@ echo $HOME
 
 Let's do a directory exercise testing your understanding of the exported path.
 
-#TODO `pwd` should return [what should `pwd` return? Try to answer without running it. <1pt>] 
-#TODO [why does `pwd` return this? <1pt>]
-
+/home/pc/workspace/HUJI_52002_Fall_2026/labs/01/scratch 
+because we enter the directory using this command cd $my_52002_repo/labs/01/scratch
 We will call this directory the "working directory" going forward. Try to stay inside this directory!
 
 Make git ignore the `scratch` subfolder by adding it to your repository's `.gitignore` file. The setup guide asked you to do this once already, so first check whether it is there, and only add it when it is missing.
 
-#TODO I added to `.gitignore` the following line: `[line <1pt>]`. 
+labs/01/scratch/
 
 Download the covid data (the same `curl` command as in the lecture):
 
@@ -78,11 +76,11 @@ curl -L -o covid.csv https://raw.githubusercontent.com/nytimes/covid-19-data/mas
 Verify the file is there and it has the correct size (in human readable format) 
 
 ```bash
-#TODO [command <1pt>]
+ls -lh covid.csv
 ```
 
 ```
-[output of the command above <1pt>]
+-rw-r--r-- 1 pc pc 35M Oct 18 13:42 covid.csv
 ```
 
 Then run `git status` from your repository and ensure the downloaded file does not appear as a new file. `git status` will  list `.gitignore` itself as modified, which is fine: as `.gitignore` *is* itself committed. If the file does appear, your `.gitignore` edit is not working.
