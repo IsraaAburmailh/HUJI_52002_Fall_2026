@@ -1,5 +1,5 @@
 ---
-title: "Lecture 3: Servers and Databases"
+title: "Lecture 3: Version Control, Parquet and Databases"
 subtitle: "Big Data Algorithms"
 format:
   html:
@@ -23,25 +23,47 @@ The setup guide explains the `git add` - `git commit` - `git push` idiom to hand
 
 `git` is not the only version control system, but it is the dominant one by far. Nobody counts "worldwide users" of a free tool exactly, so the best we have is the share of developers who say they use each one in surveys (people can name several, so shares can add to more than 100%).
 
-| System           | Born | Model       | Share of developers (approx.) | Where you meet it                         |
-|:-----------------|-----:|:------------|------------------------------:|:------------------------------------------|
-| `git`            | 2005 | distributed |                          ~94% | Almost everything, including `git` itself |
-| Subversion (SVN) | 2000 | centralized |                           ~5% | Older companies and some academic groups  |
-| Perforce         | 1995 | centralized |       a few % (no clean data) | Game studios, huge binary assets          |
-| Mercurial (`hg`) | 2005 | distributed |                           ~1% | Legacy projects (Mozilla moved to git)    |
-| CVS              | 1990 | centralized |    ~0% (legacy projects only) | Museum piece; SVN was built to replace it |
++------------------+------+-------------+-------------------------+---------------------------+
+| System           | Born | Model       | Share of developers     | Where you meet it         |
+|                  |      |             | (approx.)               |                           |
++:=================+=====:+:============+========================:+:==========================+
+| `git`            | 2005 | distributed | ~94%                    | Almost everything,        |
+|                  |      |             |                         | including `git` itself    |
++------------------+------+-------------+-------------------------+---------------------------+
+| Subversion (SVN) | 2000 | centralized | ~5%                     | Older companies and some  |
+|                  |      |             |                         | academic groups           |
++------------------+------+-------------+-------------------------+---------------------------+
+| Perforce         | 1995 | centralized | a few % (no clean data) | Game studios, huge binary |
+|                  |      |             |                         | assets                    |
++------------------+------+-------------+-------------------------+---------------------------+
+| Mercurial (`hg`) | 2005 | distributed | ~1%                     | Legacy projects (Mozilla  |
+|                  |      |             |                         | moved to git)             |
++------------------+------+-------------+-------------------------+---------------------------+
+| CVS              | 1990 | centralized | ~0% (legacy projects    | Museum piece; SVN was     |
+|                  |      |             | only)                   | built to replace it       |
++------------------+------+-------------+-------------------------+---------------------------+
 
 : Version control systems, ordered by share of developers. Survey figures are approximate and the 2025 numbers are secondhand (via [RhodeCode's summary](https://rhodecode.com/insights) of the Stack Overflow survey); Perforce and CVS have no reliable current figure, so their order is a rough judgement from [a Gartner legacy-project poll](https://www.gartner.com/peer-community/poll/what-version-control-system-vcs-are-you-using-for-legacy-projects).
 
 `git` is the tool; GitHub is a website/company (owned by Microsoft) that hosts `git` repositories (which are called the "remotes" and are usually named `origin`, `master`, `main`). GitHub also manages "pull requests", issue tracking and so on. Here is a list of places where `git` is served:
 
-| Host                  | Owner     | Accounts (approx.) | Notes                                                   |
-|:----------------------|:----------|-------------------:|:--------------------------------------------------------|
-| GitHub                | Microsoft |              ~180M | Largest by far; where our course repo lives             |
-| Self-hosted servers   | companies |    ~20-40M (guess) | Private servers; overlaps other rows                    |
-| GitLab                | GitLab    |  ~30M (unreliable) | Popular to self-host inside companies                   |
-| Bitbucket             | Atlassian |               ~15M | Integrates with Jira; dropped Mercurial support         |
-| Azure DevOps, others  | various   |   no public figure | Common in Microsoft shops, SourceForge is the old-timer |
++----------------------+-----------+--------------------+--------------------------------------+
+| Host                 | Owner     | Accounts (approx.) | Notes                                |
++:=====================+:==========+===================:+:=====================================+
+| GitHub               | Microsoft | ~180M              | Largest by far; where our course     |
+|                      |           |                    | repo lives                           |
++----------------------+-----------+--------------------+--------------------------------------+
+| Self-hosted servers  | companies | ~20-40M (guess)    | Private servers; overlaps other rows |
++----------------------+-----------+--------------------+--------------------------------------+
+| GitLab               | GitLab    | ~30M (unreliable)  | Popular to self-host inside          |
+|                      |           |                    | companies                            |
++----------------------+-----------+--------------------+--------------------------------------+
+| Bitbucket            | Atlassian | ~15M               | Integrates with Jira; dropped        |
+|                      |           |                    | Mercurial support                    |
++----------------------+-----------+--------------------+--------------------------------------+
+| Azure DevOps, others | various   | no public figure   | Common in Microsoft shops,           |
+|                      |           |                    | SourceForge is the old-timer         |
++----------------------+-----------+--------------------+--------------------------------------+
 
 : Git hosting services, ordered by accounts. GitHub's figure is from its 2025 Octoverse report (via [secondary coverage](https://www.getpanto.ai/blog/github-statistics)); Bitbucket's is Atlassian's 2025 "developers" count; GitLab's is an undated third-party estimate. Accounts are not active users, and one person may hold several. The self-hosted row is my own order-of-magnitude guess, not a measurement: no one publishes a total, so it assumes a large share of GitLab's accounts and most of Bitbucket's enterprise users sit on company-run servers. Private repos kept on GitHub itself are not counted. 
 
@@ -446,23 +468,41 @@ The demo commits disappear with the branches, so nothing from the demo ever reac
 
 ## Cheat sheet
 
-| I want to... | Command |
-|--------------|---------|
-| see what changed | `git status`, `git diff` |
-| save my work | `git add .` then `git commit -m "msg"` |
-| share it | `git push` |
-| get others' work | `git pull` |
-| see the history | `git log --oneline --graph` |
-| discard edits to a file | `git restore file` |
-| un-stage a file | `git restore --staged file` |
-| undo a pushed commit | `git revert <id>` |
-| try something on the side | `git switch -c name`, then `git merge name` |
-| set unfinished work aside | `git stash`, later `git stash pop` |
-| work on another branch in a second folder | `git worktree add ../name -b name`, later `git worktree remove ../name` |
-| see which branch I am on | `git branch --show-current` |
-| keep a file out of git | add it to `.gitignore` |
-| stop tracking a big file | `git rm --cached file` and add it to `.gitignore` |
-| find out why a file is ignored | `git check-ignore -v file` |
++-------------------------------------------+---------------------------------------------+
+| I want to...                              | Command                                     |
++===========================================+=============================================+
+| see what changed                          | `git status`, `git diff`                    |
++-------------------------------------------+---------------------------------------------+
+| save my work                              | `git add .` then `git commit -m "msg"`      |
++-------------------------------------------+---------------------------------------------+
+| share it                                  | `git push`                                  |
++-------------------------------------------+---------------------------------------------+
+| get others' work                          | `git pull`                                  |
++-------------------------------------------+---------------------------------------------+
+| see the history                           | `git log --oneline --graph`                 |
++-------------------------------------------+---------------------------------------------+
+| discard edits to a file                   | `git restore file`                          |
++-------------------------------------------+---------------------------------------------+
+| un-stage a file                           | `git restore --staged file`                 |
++-------------------------------------------+---------------------------------------------+
+| undo a pushed commit                      | `git revert <id>`                           |
++-------------------------------------------+---------------------------------------------+
+| try something on the side                 | `git switch -c name`, then `git merge name` |
++-------------------------------------------+---------------------------------------------+
+| set unfinished work aside                 | `git stash`, later `git stash pop`          |
++-------------------------------------------+---------------------------------------------+
+| work on another branch in a second folder | `git worktree add ../name -b name`, later   |
+|                                           | `git worktree remove ../name`               |
++-------------------------------------------+---------------------------------------------+
+| see which branch I am on                  | `git branch --show-current`                 |
++-------------------------------------------+---------------------------------------------+
+| keep a file out of git                    | add it to `.gitignore`                      |
++-------------------------------------------+---------------------------------------------+
+| stop tracking a big file                  | `git rm --cached file` and add it to        |
+|                                           | `.gitignore`                                |
++-------------------------------------------+---------------------------------------------+
+| find out why a file is ignored            | `git check-ignore -v file`                  |
++-------------------------------------------+---------------------------------------------+
 
 ::: {.callout-tip}
 ## Try it
@@ -470,67 +510,469 @@ The demo commits disappear with the branches, so nothing from the demo ever reac
 :::
 
 
-# Working on remote machines: `ssh`, `scp`, `rsync` and `tmux`
+# Parquet: a better file than CSV
 
-Big data rarely lives on your laptop. You work on a server or a cluster: a computer in a machine room that you reach over the network, with far more cores, memory and disk than yours. Everything you have learned so far works there too, because you give it commands through a shell. The tools below get you there, move the files, and keep your jobs alive.
+Everything so far used the CSV: plain text, one row per line. It is the universal format and you will receive data in it for the rest of your career. But a CSV is just the bare table: no column types, nothing about what is inside, and no way to read part of it without reading all of it. Before we go all the way to a database, there is a middle step that is still just a file you can copy, `scp` and commit: **Parquet**.
 
-(These examples need an account on a remote machine. Replace `user@server` with your own login.)
+Think of Parquet as **annotated tabular data**. It stores the same table as the CSV, plus notes about the table, written into the file itself: the name and type of every column, how each column was compressed, and a summary (the smallest and largest value) of every block of rows. Those annotations are what make it
 
-## `ssh`: log in to another machine
+* **fast to read**: a program knows the types in advance, so it does not parse and guess, and it can read just the columns it needs, and
+* **fast to query**: the summaries let a program skip the blocks that cannot contain the answer without even reading them.
 
-```bash
-ssh user@server          # log in; the prompt is now on the server
-ssh user@server "df -h"  # run one command there and come back
-exit                                 # leave the server (or Ctrl+D)
-```
+This unit defines tabular data and its column types, motivates the annotated format, converts `covid.csv`, and then shows what happens when the data is really large: it keeps working, in R and in Python, when the CSV would not even fit in memory.
 
-After `ssh` connects, you are typing into a shell on the server, and `pwd`, `ls`, `htop` and the rest refer to *that* machine. Check which one you are on by the prompt or with `hostname`.
-
-Typing a password each time gets tedious. A **key pair** replaces it: you create a private key that stays on your computer and a public key that you give to the server:
-
-```bash
-ssh-keygen -t ed25519                # make the key pair, once
-ssh-copy-id user@server  # install your public key on the server
-ssh user@server          # now logs in without a password
-```
-
-Never share the private key (`~/.ssh/id_ed25519`). The public one, `id_ed25519.pub`, is meant to be shared.
-
-## `scp` and `rsync`: copy files between machines
-
-`scp` ("secure copy") is `cp` across the network. The remote side is written `user@server:path`, and the colon is what says "this is on the server":
-
-```bash
-scp results.csv user@server:~/data/     # your computer to the server
-scp user@server:~/out/model.pkl .       # server to here (. : this folder)
-scp -r results/ user@server:~/          # -r : a whole folder
-```
-
-`rsync` does the same job better for anything big or repeated. It compares both sides and sends only what is missing or changed, so a second run of a large copy takes seconds, and an interrupted one can be resumed:
-
-```bash
-rsync -av data/ user@server:~/data/     # -a : keep folders, dates; -v : talk
-rsync -avz data/ user@server:~/data/    # -z : compress while sending
-rsync -avP data/ user@server:~/data/    # -P : progress, keep partial files
-rsync -avn data/ user@server:~/data/    # -n : dry run, only show the plan
-```
-
-::: {.callout-warning}
-## The trailing slash matters
-`rsync -av data/ dest/` copies the *contents* of `data` into `dest`. Without the slash, `rsync -av data dest/` creates `dest/data`. The same is true on the destination side. When in doubt, add `-n` first.
-:::
-
-# Databases: when a CSV is not enough
-
-A CSV is a fine way to *ship* data, and the tools from the last two lectures are fine for a quick look. But as soon as you ask many questions of the same data, or change it, or share it, the file starts to hurt. In this unit we feel the pain first, and then fix it with a **database**: a program that stores data in a structured way and answers questions about it quickly. We will use **PostgreSQL** ("Postgres"), which you installed in the setup guide.
-
-Make a scratch folder for this lecture and bring the data along:
+Make a scratch folder for this lecture and bring the data along (we use it again in the database unit):
 
 ```bash
 mkdir -p ~/workspace/HUJI_52002_Fall_2026/scratch/lec03
 cd ~/workspace/HUJI_52002_Fall_2026/scratch/lec03
 cp ../lec01/covid.csv .
 ```
+
+## What is tabular data?
+
+Parquet, like the CSV, stores **tabular data**, so let us define it. A table is a rectangle with two directions:
+
+* Each **row** is one **object** (also called a subject, an observation, a case, a record, a unit, an example or an instance): one thing that we measured.
+* Each **column** is one **attribute** (also called a feature, a characteristic, a variable, a field or a predictor): one property that we measured, for every object.
+
+Usually the # of rows is denoted $n$ and the number of columns denoted $p$.
+
+Every row has the same columns, and every column holds one kind of value (all dates, or all integers, or all text). Here are the first rows of `covid.csv`:
+
+```bash
+head -n 4 covid.csv | column -s, -t
+```
+
+```
+date        county     state       fips   cases  deaths
+2020-01-21  Snohomish  Washington  53061  1      0
+2020-01-22  Snohomish  Washington  53061  1      0
+2020-01-23  Snohomish  Washington  53061  1      0
+```
+
+The six columns are the attributes. Each row is one object, and here the *object* is the **report for one county on one day**: "Snohomish County on 2020-01-21". It is *not* a county, since Snohomish appears in many rows (`date`, `county` and `state` together identify a row, because many states have a Washington County), and deciding what one row stands for is the first question to ask of any dataset. In this context, the vocabulary I would use is "this file has 884,737 records and 6 fields per record".
+
+Different communities use different words for the same two ideas:
+
++------------------+------------------------+------------------------------------------+
+|                  | Rows                   | Columns                                  |
++:=================+:=======================+:=========================================+
+| Statistics       | subjects, observations | variables                                |
++------------------+------------------------+------------------------------------------+
+| Machine learning | examples, instances    | features (the $X$s), the label (the $y$) |
++------------------+------------------------+------------------------------------------+
+| Databases        | records, tuples        | fields, attributes                       |
++------------------+------------------------+------------------------------------------+
+| R / Python       | rows of a data frame   | columns of a data frame                  |
++------------------+------------------------+------------------------------------------+
+
+: The same rectangle, in four vocabularies. You will see all of them in this course.
+
+Not all data is tabular. A nested JSON record, an image, or a paragraph of text is not a rectangle of objects by attributes. But for now, we will be focusing on tables.
+
+## Data types (= column types)
+
+Every column has a **type**: the kind of thing its values are, which decides what you are allowed to do with them. There are two layers to keep apart. The first is what the values *mean* (the statistical type), and the second is how the computer *stores* them (the storage type).
+
+**What the values mean.** The classical scheme sorts a column by the operations that make sense on it:
+
++----------------+-----------------+------------------+------------------+----------------+
+| Type           | Question it     | Example          | What makes sense | In `covid.csv` |
+|                | answers         |                  |                  |                |
++:===============+:================+:=================+:=================+:===============+
+| **Categorical, | which group?    | state, blood     | equal or not     | `state`,       |
+| nominal**      |                 | type, country    | equal; counting; | `county`       |
+|                |                 |                  | no order         |                |
++----------------+-----------------+------------------+------------------+----------------+
+| **Categorical, | which group, in | grade (A, B, C), | order (<, >) but | none           |
+| ordinal**      | a *ranked*      | shirt size (S,   | the gaps between |                |
+|                | order?          | M, L), "disagree | levels are not   |                |
+|                |                 | / neutral /      | meaningful       |                |
+|                |                 | agree"           |                  |                |
++----------------+-----------------+------------------+------------------+----------------+
+| **Interval**   | how far apart?  | temperature in   | differences      | `date`         |
+|                |                 | Celsius, a       | (30°C is 10°     |                |
+|                |                 | calendar date    | warmer than      |                |
+|                |                 |                  | 20°C), but no    |                |
+|                |                 |                  | ratios: the zero |                |
+|                |                 |                  | is arbitrary, so |                |
+|                |                 |                  | 30°C is not "1.5 |                |
+|                |                 |                  | times as hot" as |                |
+|                |                 |                  | 20°C             |                |
++----------------+-----------------+------------------+------------------+----------------+
+| **Ratio**      | how many or how | cases, height,   | everything:      | `cases`,       |
+|                | much?           | income, age      | differences      | `deaths`       |
+|                |                 |                  | *and* ratios,    |                |
+|                |                 |                  | because zero     |                |
+|                |                 |                  | means "none"     |                |
++----------------+-----------------+------------------+------------------+----------------+
+| **Character**  | what was        | a tweet, an      | search and parse | none           |
+| (free text)    | written?        | address, a       | it; not a        |                |
+|                |                 | comment          | category until   |                |
+|                |                 |                  | you extract one  |                |
++----------------+-----------------+------------------+------------------+----------------+
+
+: The statistical types. Nominal and ordinal are together called **categorical** (a fixed set of levels). Interval and ratio are together called **numeric**.
+
+A few places where this is not obvious:
+
+* **A code that looks like a number is nominal.** `fips` is made of digits, but adding two FIPS codes or taking their mean is meaningless. It is a label for a county, so it should be stored as text. (Remember the `06059` that lost its zero.)
+* **A count is a ratio, and it is discrete.** `cases` can be 0, 1, 2, but never 1.5. A measured quantity such as height is continuous. Both are ratio-scale numbers, but you use different models for them later in the course.
+* **A yes/no column is a special case**, called binary. It is nominal with exactly two levels (stored as `true` / `false`).
+* **Ordinal data is the one most often mishandled.** If you store grades A, B, C as 1, 2, 3, a program will happily average them, and it will treat the step from A to B as the same size as the step from B to C. Keep the order, but do not do arithmetic on it.
+* **Missing values are part of the type.** In `covid.csv`, 8,266 rows have no `fips` (mostly the county `Unknown`, plus a few cities) and 18,761 rows have no `deaths`. A column of integers cannot hold "missing" in many programs, so they silently turn the whole column into decimals: `pandas` read `deaths` as `float64` for this reason.
+
+**How the values are stored.** The computer needs a concrete representation for each statistical type. These are the storage types you will meet in R, `pandas` and Parquet:
+
++------------------+-----------------+------------------+--------------+------------------+
+| Statistical type | Typical storage | R                | `pandas`     | Parquet / Arrow  |
+|                  | type            |                  |              |                  |
++:=================+:================+:=================+:=============+:=================+
+| nominal          | text, or a      | `character`,     | `object` /   | string,          |
+|                  | dictionary of   | `factor`         | `string`,    | dictionary       |
+|                  | levels          |                  | `category`   |                  |
++------------------+-----------------+------------------+--------------+------------------+
+| ordinal          | the same, with  | `ordered` factor | ordered      | dictionary (with |
+|                  | the level order |                  | `category`   | an "ordered"     |
+|                  | recorded        |                  |              | flag)            |
++------------------+-----------------+------------------+--------------+------------------+
+| interval (a      | a date or a     | `Date`,          | `datetime64` | date32,          |
+| date)            | timestamp       | `POSIXct`        |              | timestamp        |
++------------------+-----------------+------------------+--------------+------------------+
+| ratio, counts    | integer         | `integer`        | `int64`      | int32, int64     |
++------------------+-----------------+------------------+--------------+------------------+
+| ratio,           | decimal         | `numeric`        | `float64`    | float, double    |
+| measurements     | ("floating      |                  |              |                  |
+|                  | point")         |                  |              |                  |
++------------------+-----------------+------------------+--------------+------------------+
+| binary           | boolean         | `logical`        | `bool`       | boolean          |
++------------------+-----------------+------------------+--------------+------------------+
+| character (free  | text            | `character`      | `object` /   | string           |
+| text)            |                 |                  | `string`     |                  |
++------------------+-----------------+------------------+--------------+------------------+
+
+: The storage types, row by row. The names differ but the ideas are the same, which is what lets Python and R share a Parquet file.
+
+A CSV stores all of these as text and leaves every program to guess the storage type. Parquet stores the type in the file, so a `date` stays a date, `cases` stays an integer and `fips` stays text. For a nominal column such as `state`, with 55 distinct values repeated on 885,000 rows, it stores the small list of levels once and then a short code per row (**dictionary encoding**, which we will see again below), which is also why the column compresses so well. The same idea in R is a `factor` and in `pandas` is a `category`.
+
+## What is wrong with a CSV?
+
+Three complaints that need no database at all:
+
+1. **It is big.** Text spends one byte per digit and writes `Texas` out again on 67,002 rows. Our `covid.csv` is 35 MB, and `gzip` can squeeze it to 9 MB, but then every tool must unpack it first.
+2. **It has no types.** A CSV does not know that `date` is a date, that `cases` is an integer, or that `fips` is a *code* and not a number. Every program guesses on every read. Guess `fips` is an integer and the code `06059` (Orange County, California) silently becomes `6059`. Compare what the two languages guess on the same file:
+
+```bash
+Rscript -e 'library(data.table); str(fread("covid.csv", nrows = 1000))'     # fips: int
+python3 -c 'import pandas as pd; print(pd.read_csv("covid.csv", nrows=1000).dtypes)'   # fips: float64 (the column has missing values)
+```
+
+3. **You must read everything to get anything.** A CSV is stored row by row, so a question about two columns still reads (and parses) all six. The lectures' `cut -d, -f3` has to scan every byte of every line to find the third comma.
+
+What we want is the same table with annotations: a file that is **smaller**, **typed**, and lets us **read only the columns we need**. That is Parquet.
+
+## A short history
+
+Parquet is not old, and it came out of a specific problem: companies with petabytes of logs on Hadoop clusters whose queries were slow because they read row after row of text.
+
++-----------+--------------------------------------------------------------------------------+
+|      Year | What happened                                                                  |
++==========:+:===============================================================================+
+|      2010 | Google publishes the **Dremel** paper: how to store even nested records *by    |
+|           | column*, so a query touches only the columns it names. Google used it          |
+|           | internally for web-scale analytics (it later became BigQuery).                 |
++-----------+--------------------------------------------------------------------------------+
+|      2013 | **Twitter** and **Cloudera** (whose Impala engine needed a fast file format)   |
+|           | build an open-source version of Dremel's storage ideas and call it Parquet.    |
+|           | About the same time, Hive's **ORC** format appears with the same idea.         |
++-----------+--------------------------------------------------------------------------------+
+|      2015 | Parquet becomes a top-level project of the Apache Software Foundation, the     |
+|           | home of Hadoop and Spark.                                                      |
++-----------+--------------------------------------------------------------------------------+
+|      2016 | **Apache Arrow**, started by Wes McKinney (the author of `pandas`), defines    |
+|           | the same columnar layout *in memory*. Parquet on disk and Arrow in memory fit  |
+|           | together, which is why Python and R can read Parquet so quickly.               |
++-----------+--------------------------------------------------------------------------------+
+|      2017 | `pandas` gets `read_parquet` and `to_parquet`, and R gets the `arrow` package. |
+|           | Parquet leaves the Hadoop world.                                               |
++-----------+--------------------------------------------------------------------------------+
+| 2018-2019 | **Iceberg** (from Netflix) and **Delta Lake** (from Databricks) appear: table  |
+|           | formats that add transactions and "undo" on top of folders of Parquet files.   |
+|           | **DuckDB**, a database that queries a Parquet file directly, appears.          |
++-----------+--------------------------------------------------------------------------------+
+
+: Dates are from my memory of the projects' histories; check the Apache Parquet site before quoting one.
+
+## How popular is it?
+
+There is no number like the "share of developers" we quoted for `git`, because nobody surveys file formats. What we can say is where it shows up, and that is nearly everywhere in data engineering:
+
+* **Engines read and write it.** Spark writes Parquet by default, and Snowflake, BigQuery, AWS Athena and DuckDB all load, export or query it directly.
+* **Table formats are built on it.** Delta Lake and Iceberg, the standard ways of organizing a company's folders of files into tables, store their data *as Parquet files* plus a layer of bookkeeping.
+* **Both our languages support it.** `pandas`, `polars`, and R's `arrow` read and write it, so a Parquet file made in Python opens in R unchanged. That makes it the format of choice for *handing data between tools*, unlike a `.pkl` or `.rds`.
+* **Public data is published in it**, for example many datasets on the Hugging Face hub and large open datasets on cloud storage.
+
+It has rivals: **ORC** (the same idea, mostly in the Hive world), **Avro** (row-based, popular for streams of events), and newer formats still being tested. But if you join a data team and ask "what format is the data in?", the most likely answer today is "Parquet".
+
+## Converting `covid.csv`
+
+First, say what each column *is*. In Python, `dtype` and `parse_dates` do it; then `to_parquet` writes the file (it needs the `pyarrow` package):
+
+```python
+import pandas as pd
+df = pd.read_csv("covid.csv", dtype={"fips": str}, parse_dates=["date"])   # fips is a code (text), date is a date
+print(df.dtypes)
+df.to_parquet("covid.parquet", compression="zstd")
+```
+
+In R, the `arrow` package does the same. `schema(fips = string())` overrides the guess for just that column:
+
+```r
+library(arrow)
+df <- read_csv_arrow("covid.csv", col_types = schema(fips = string()))
+write_parquet(df, "covid.parquet", compression = "zstd")
+```
+
+Now compare the files:
+
+```bash
+ls -alh covid.csv covid.parquet     # 35M versus 3.4M
+file covid.parquet                  # Apache Parquet
+gzip -k covid.csv; ls -alh covid.csv.gz; rm covid.csv.gz     # 8.9M: the CSV zipped
+head -c 4 covid.parquet; echo; tail -c 4 covid.parquet       # PAR1 at both ends: the "magic bytes"
+```
+
+The Parquet file is about **10 times smaller** than the CSV, and even smaller than the gzipped CSV, **and** it can be read directly. Reading it back keeps the types, so `date` is still a date and `fips` is still the text `"06059"` without anybody guessing:
+
+```python
+pd.read_parquet("covid.parquet").dtypes
+```
+
+And you can ask for only the columns you want:
+
+```python
+pd.read_parquet("covid.parquet", columns=["state", "cases"])   # reads two of the six columns
+```
+
+Here are our timings in `pandas` on this file (one run on one machine; yours will differ but the ranking should not):
+
++-------------------------------+---------+---------+
+| Task                          | CSV     | Parquet |
++:==============================+========:+========:+
+| File size                     | 35.9 MB | 3.4 MB  |
++-------------------------------+---------+---------+
+| Read the whole table          | 0.65 s  | 0.03 s  |
++-------------------------------+---------+---------+
+| Read only `state` and `cases` | 0.31 s  | 0.02 s  |
++-------------------------------+---------+---------+
+
+Notice that the CSV cannot make the two-column read much faster (`usecols` still has to scan every line), while Parquet gets faster because it never touches the other columns.
+
+Be fair to the CSV, though: those timings are for `pandas`, whose CSV reader is slow. R's `data.table::fread` is one of the fastest CSV readers there is, and on this 35 MB file it loads the whole table in 0.10 s, about as fast as reading the Parquet file (0.15 s into a `data.table`). The columns-only read is where Parquet already wins (0.025 s versus 0.05 s for `fread` with `select=`). At 35 MB nobody should care about any of this. The real difference shows up when the file is much bigger, and that is the section after next.
+
+## Why is it small and fast?
+
+Three ideas, none of them magic:
+
+* **Columns, not rows.** The values of one column are stored together. `state` becomes a long run of the same few dozen words, which compresses extremely well; `cases` is a run of integers. Mixing text and numbers in every line, as a CSV does, spoils both.
+* **Types and encodings.** An integer is stored as an integer, not as characters. A column with few distinct values (the 55 states) is stored as a small dictionary plus a list of codes (**dictionary encoding**).
+* **A footer of summary statistics.** At the end of the file, Parquet stores the min and max of every column for every block of rows (a **row group**). A query for `cases > 700000` can skip every block whose maximum is lower without reading it. You can see these:
+
+```python
+import pyarrow.parquet as pq
+pf = pq.ParquetFile("covid.parquet")
+print(pf.schema_arrow)                          # names and types
+print(pf.metadata.row_group(0).column(4))       # min, max, compression of the cases column
+```
+
+## When the data is really large
+
+Everything above fits in memory on any laptop. So let us make a dataset that is 50 times bigger: `covid.csv` stacked 50 times, with a `copy` column saying which copy a row came from. That is 44 million rows. (The numbers are copies of each other, so this is a toy dataset, but the size and the shape are real.) The script is in `lectures/scripts/lec03/` and writes the data twice: once as a single big CSV, and once as a **folder of Parquet files**, one file per copy:
+
+```bash
+python3 ../../lectures/scripts/lec03/make_covid_big.py covid.csv 50 --csv   # about 80 seconds
+ls -alh covid_big.csv        # 1.8G
+du -sh covid_big             # 163M: 50 Parquet files
+ls covid_big | head -3       # copy=0  copy=1  copy=10
+ls covid_big/copy=0          # part-0.parquet
+```
+
+The folder names `copy=0`, `copy=1`, ... follow a convention called **hive partitioning**: the name of a folder holds the value of a column, so the column does not have to be stored inside the files. The question for both versions: *what is the total of `cases` in Texas, separately for every copy?*
+
+**The CSV way:** load everything, then ask. In R and in Python:
+
+```r
+library(data.table)
+d <- fread("covid_big.csv")                                        # all 44M rows into memory
+d[state == "Texas", .(cases = sum(cases)), by = copy]
+```
+
+```python
+import pandas as pd
+d = pd.read_csv("covid_big.csv", dtype={"fips": str})              # all 44M rows into memory
+d[d.state == "Texas"].groupby("copy").cases.sum()
+```
+
+**The Parquet way:** point at the folder and ask. Nothing is loaded up front. The program works out which parts of which files it needs, reads only those, and returns just the small answer:
+
+```r
+library(arrow); library(dplyr)
+open_dataset("covid_big") |>                                       # a lazy handle on the folder
+  filter(state == "Texas") |>
+  group_by(copy) |>
+  summarise(cases = sum(cases)) |>
+  collect()                                                        # now it runs, and returns 50 rows
+```
+
+```python
+import pyarrow.dataset as ds, pyarrow.compute as pc
+d = ds.dataset("covid_big", format="parquet", partitioning="hive")
+d.to_table(columns=["copy", "cases"], filter=pc.field("state") == "Texas") \
+ .group_by("copy").aggregate([("cases", "sum")])
+```
+
+Time each one, and ask Linux for the most memory it used (the line `Maximum resident set size`):
+
+```bash
+/usr/bin/time -v Rscript query.R 2> time.txt; grep "Maximum resident" time.txt
+```
+
+Our results (one run on a 12-core machine with 41 GB of memory; yours will differ but the ranking should not):
+
++------------------------+--------------------------------+--------------------------------+
+|                        | CSV: load everything, then ask | Parquet: ask the folder        |
++:=======================+===============================:+===============================:+
+| File size on disk      | 1.8 GB                         | 163 MB                         |
++------------------------+--------------------------------+--------------------------------+
+| R: time                | 29 s (`fread`)                 | 2.7 s (`arrow`)                |
++------------------------+--------------------------------+--------------------------------+
+| R: peak memory         | 3.7 GB                         | 0.6 GB                         |
++------------------------+--------------------------------+--------------------------------+
+| Python: time           | 113 s (`pandas`)               | 1.9 s (`pyarrow`)              |
++------------------------+--------------------------------+--------------------------------+
+| Python: peak memory    | 6.5 GB                         | 0.6 GB                         |
++------------------------+--------------------------------+--------------------------------+
+
+Read the memory rows carefully. The CSV versions need several gigabytes *because they load all the data first*, and that is the number that decides whether your laptop can do the job at all. On a laptop with 8 GB of memory and a file ten times this size, `fread` and `pandas` simply fail with "out of memory". The Parquet versions stay at about 0.6 GB, because they stream through the files a piece at a time and keep only the running totals. The same code would work on a 500 GB folder. (The 163 MB is flattering: the 50 copies are identical, which compresses much better than real data does. The memory and the speed advantage are the real result.)
+
+How can it be this much faster? The annotations again:
+
+* It read **3 of the 7 columns** (`state`, `cases`, `copy`) and never touched the others.
+* It used the **row-group statistics** to skip blocks that cannot contain Texas.
+* It processed **one file at a time**, so memory never held the whole dataset.
+* And with the folder names it can skip files entirely. Ask only about the first five copies, and it opens only five folders (**partition pruning**). That took 0.34 s in R and 0.15 s in Python on our machine:
+
+```r
+open_dataset("covid_big") |> filter(state == "Texas", copy < 5) |> group_by(copy) |> summarise(cases = sum(cases)) |> collect()
+```
+
+The same folder can be asked with SQL by DuckDB, a database that runs on Parquet files and is available in both R and Python. In R, the `duckdb` package gave the same answer in 1.3 s:
+
+```r
+con <- DBI::dbConnect(duckdb::duckdb())
+DBI::dbGetQuery(con, "SELECT copy, sum(cases) AS cases
+                      FROM read_parquet('covid_big/*/*.parquet', hive_partitioning = true)
+                      WHERE state = 'Texas' GROUP BY copy")
+```
+
+### Can't `awk` do this in constant memory?
+
+Yes, and that is a fair objection, because a streaming tool never loads the data. Count the rows in each state, first with `awk` on the CSV and then with `arrow` on the Parquet folder:
+
+```bash
+awk -F, 'NR>1 {n[$3]++} END {for (s in n) print s "," n[s]}' covid_big.csv | sort -t, -k2,2nr | head -n 3
+```
+
+```r
+open_dataset("covid_big") |> count(state) |> arrange(desc(n)) |> collect()
+```
+
+Both give the same answer (Texas 3,350,100, Georgia 2,260,450, Virginia 1,844,300). We also timed a second question with each tool, the total of Texas `cases` for each `copy`:
+
++--------------------------------------+---------------------+-----------------------+
+|                                      | `awk` on the CSV    | `arrow` on Parquet    |
++:=====================================+====================:+======================:+
+| Rows per state: time                 | 144 s               | 2.8 s                 |
++--------------------------------------+---------------------+-----------------------+
+| Texas cases per copy: time           | 156 s               | 2.5 s                 |
++--------------------------------------+---------------------+-----------------------+
+| Peak memory (rows per state)         | 4.6 MB              | 405 MB                |
++--------------------------------------+---------------------+-----------------------+
+
+: One run, one machine. `awk` uses one core, `arrow` uses all twelve.
+
+On memory, `awk` wins by a factor of nearly a hundred: 4.6 MB, because it keeps only a counter for each of the 55 states. The price is **time**. `awk` has to read and split every one of the 1.8 GB for *every* question, so each question costs about two and a half minutes, and ten questions cost half an hour. `arrow` answered in under three seconds, because the first question needed only the `state` column (one of seven) and it spread the work over all the cores. Converting the CSV to Parquet costs one pass, once, and then every later question is cheap.
+
+Streaming also has limits that Parquet does not. `awk` stays at constant memory only when the number of groups is small: a table of 44 million different keys would not fit in a hash map. A median needs all the values, a sort needs temporary files, and a join needs one of the two tables in memory. And as the `cut` example earlier showed, it breaks on a CSV with quoted fields (note that we had to turn quoting off to write `covid_big.csv`, or `awk` would see `"Texas"` with the quotes).
+
+So the honest rule is: for a single question about a file you will read once, `awk` on the CSV is fine and Parquet does not help. Parquet pays off when you will ask **many** questions about the **same** large table, and when each question touches only some of its columns.
+
+Clean up the big files when you are done, since they take about 2 GB: `rm -r covid_big covid_big.csv`.
+
+## What it cannot do
+
+* **It is binary.** `head`, `grep`, `cut` and `awk` show gibberish. You need a program that understands Parquet, which is why the shell tools from lectures 1 and 2 are for the *before* step and Parquet is for the *after*.
+* **It is write-once.** You cannot change one value in place or append a row to the file; you rewrite it. (Delta Lake and Iceberg exist to hide this.)
+* **It is still just a file.** It has no indexes, no users, and nothing stops two programs from writing at once. For that you need a database, which is next.
+
+## Which format when?
+
+Putting the four formats side by side, for tabular data like `covid.csv`. A ✓ means "best of the four, or tied for best", ✗ means "poor or missing", and *partly* is in between. The sizes are for the whole `covid.csv` (the JSON size is from the lecture 2 benchmark).
+
++------------------+----------------+----------------+------------------+---------------+
+|                  | CSV            | CSV + `xz`     | JSON             | Parquet       |
++:=================+:==============:+:==============:+:================:+:=============:+
+| Human-readable   | ✓              | ✗              | ✓                | ✗             |
+| in a text editor |                |                |                  |               |
++------------------+----------------+----------------+------------------+---------------+
+| Opens            | ✓              | partly         | ✓                | ✗             |
+| everywhere, no   |                |                |                  |               |
+| special library  |                |                |                  |               |
++------------------+----------------+----------------+------------------+---------------+
+| Smallest file    | ✗ 35.9 MB      | ✓ 1.8 MB       | ✗ about 94 MB    | ✗ 3.4 MB      |
++------------------+----------------+----------------+------------------+---------------+
+| Column types     | ✗              | ✗              | partly           | ✓             |
+| stored in the    |                |                |                  |               |
+| file             |                |                |                  |               |
++------------------+----------------+----------------+------------------+---------------+
+| Load the whole   | ✓              | ✗              | ✗                | ✓             |
+| table fast       |                |                |                  |               |
++------------------+----------------+----------------+------------------+---------------+
+| Read only some   | ✗              | ✗              | ✗                | ✓             |
+| columns fast     |                |                |                  |               |
++------------------+----------------+----------------+------------------+---------------+
+| Skip data using  | ✗              | ✗              | ✗                | ✓             |
+| built-in         |                |                |                  |               |
+| summaries        |                |                |                  |               |
++------------------+----------------+----------------+------------------+---------------+
+| Query data       | partly         | partly         | ✗                | ✓             |
+| bigger than      |                |                |                  |               |
+| memory           |                |                |                  |               |
++------------------+----------------+----------------+------------------+---------------+
+| Append a row     | ✓              | ✗              | partly           | ✗             |
++------------------+----------------+----------------+------------------+---------------+
+| Nested records   | ✗              | ✗              | ✓                | ✓             |
+| (lists inside    |                |                |                  |               |
+| records)         |                |                |                  |               |
++------------------+----------------+----------------+------------------+---------------+
+| Works with       | ✓              | ✓ with `xzcat` | partly           | ✗             |
+| `grep`, `cut`,   |                |                |                  |               |
+| `awk` in a pipe  |                |                |                  |               |
++------------------+----------------+----------------+------------------+---------------+
+| Best for         | handing small  | archiving and  | web APIs, nested | analyzing big |
+|                  | data to anyone | sending        | data             | tabular data  |
++------------------+----------------+----------------+------------------+---------------+
+
+: Notes: JSON gets *partly* for appending because a JSON Lines file (one record per line) can be appended to, but an ordinary JSON array cannot. CSV and CSV + `xz` get *partly* for bigger-than-memory queries because `awk` and friends stream through the file, but they have to read all of it, every time.
+
+No format wins every row. CSV wins on universality, `xz` on size, JSON on nesting, and Parquet wins on everything about *reading a lot of tabular data quickly*, which is why it is the one that data engineers choose for analysis.
+
+# Databases: when a CSV is not enough
+
+A CSV is a fine way to *ship* data, and the tools from the last two lectures are fine for a quick look. But as soon as you ask many questions of the same data, or change it, or share it, the file starts to hurt. In this unit we feel the pain first, and then fix it with a **database**: a program that stores data in a structured way and answers questions about it quickly. We will use **PostgreSQL** ("Postgres"), which you installed in the setup guide.
+
+We keep working in the same scratch folder as the Parquet unit above (`scratch/lec03`, with `covid.csv` in it).
 
 ## Where a CSV hurts
 
@@ -572,12 +1014,17 @@ psql lec03                       # the interactive prompt; \q quits
 
 A few commands that start with a backslash belong to `psql` itself and are not SQL:
 
-| Command | What it does |
-|---------|--------------|
-| `\timing on` | print how long each statement took |
-| `\d covid` | describe a table: its columns and their types |
-| `\dt` | list the tables |
-| `\q` | quit |
++--------------+-----------------------------------------------+
+| Command      | What it does                                  |
++==============+===============================================+
+| `\timing on` | print how long each statement took            |
++--------------+-----------------------------------------------+
+| `\d covid`   | describe a table: its columns and their types |
++--------------+-----------------------------------------------+
+| `\dt`        | list the tables                               |
++--------------+-----------------------------------------------+
+| `\q`         | quit                                          |
++--------------+-----------------------------------------------+
 
 ## Loading the CSV
 
